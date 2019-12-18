@@ -2,8 +2,10 @@ package com.github.kongchen.swagger.docgen.mavenplugin;
 
 import com.github.kongchen.swagger.docgen.AbstractDocumentSource;
 import com.github.kongchen.swagger.docgen.GenerateException;
+import io.swagger.models.Info;
 import io.swagger.util.Json;
 
+import org.apache.maven.model.Model;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
@@ -63,7 +65,7 @@ public class ApiDocumentMojo extends AbstractMojo {
     @Parameter(property = "swagger.skip", defaultValue = "false")
     private boolean skipSwaggerGeneration;
 
-    @Parameter(property="file.encoding")
+    @Parameter(property = "file.encoding")
     private String encoding;
 
     public List<ApiSource> getApiSources() {
@@ -76,8 +78,9 @@ public class ApiDocumentMojo extends AbstractMojo {
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
-        if(project !=null) {
-            projectEncoding = project.getProperties().getProperty("project.build.sourceEncoding");
+        if (project != null) {
+            projectEncoding = project.getProperties()
+                                     .getProperty("project.build.sourceEncoding");
         }
 
         if (skipSwaggerGeneration) {
@@ -88,6 +91,18 @@ public class ApiDocumentMojo extends AbstractMojo {
         if (apiSources == null) {
             throw new MojoFailureException("You must configure at least one apiSources element");
         }
+
+        // 自动设置info进apiSource
+        Model model = project.getParent().getModel();
+        Info info = new Info();
+        info.setTitle(model.getName());
+        info.setVersion(model.getVersion());
+        ApiSource source = apiSources.get(0);
+        source.setSpringmvc(true); //肯定是mvc
+        source.setInfo(info);
+        source.setOutputFormats("json");
+        source.setSwaggerDirectory("../swagger");
+
         if (useSwaggerSpec11()) {
             throw new MojoExecutionException("You may use an old version of swagger which is not supported by swagger-maven-plugin 2.0+\n" +
                     "swagger-maven-plugin 2.0+ only supports swagger-core 1.3.x");
@@ -101,15 +116,15 @@ public class ApiDocumentMojo extends AbstractMojo {
         try {
             getLog().debug(apiSources.toString());
 
-            if (enabledObjectMapperFeatures!=null) {
-                configureObjectMapperFeatures(enabledObjectMapperFeatures,true);
-                
+            if (enabledObjectMapperFeatures != null) {
+                configureObjectMapperFeatures(enabledObjectMapperFeatures, true);
+
             }
 
-            if (disabledObjectMapperFeatures!=null) {
-                configureObjectMapperFeatures(disabledObjectMapperFeatures,false);
+            if (disabledObjectMapperFeatures != null) {
+                configureObjectMapperFeatures(disabledObjectMapperFeatures, false);
             }
-            
+
             for (ApiSource apiSource : apiSources) {
                 validateConfiguration(apiSource);
                 AbstractDocumentSource documentSource = apiSource.isSpringmvc()
@@ -177,15 +192,20 @@ public class ApiDocumentMojo extends AbstractMojo {
         } else if (apiSource.getInfo() == null) {
             throw new GenerateException("`<info>` is required by Swagger Spec.");
         }
-        if (apiSource.getInfo().getTitle() == null) {
+        if (apiSource.getInfo()
+                     .getTitle() == null) {
             throw new GenerateException("`<info><title>` is required by Swagger Spec.");
         }
 
-        if (apiSource.getInfo().getVersion() == null) {
+        if (apiSource.getInfo()
+                     .getVersion() == null) {
             throw new GenerateException("`<info><version>` is required by Swagger Spec.");
         }
 
-        if (apiSource.getInfo().getLicense() != null && apiSource.getInfo().getLicense().getName() == null) {
+        if (apiSource.getInfo()
+                     .getLicense() != null && apiSource.getInfo()
+                                                       .getLicense()
+                                                       .getName() == null) {
             throw new GenerateException("`<info><license><name>` is required by Swagger Spec.");
         }
 
@@ -223,12 +243,15 @@ public class ApiDocumentMojo extends AbstractMojo {
 
     private void configureObjectMapperFeatures(List<String> features, boolean enabled) throws Exception {
         for (String feature : features) {
-            int i=  feature.lastIndexOf(".");
-            Class clazz = Class.forName(feature.substring(0,i));
-            Enum e = Enum.valueOf(clazz,feature.substring(i+1));
-            getLog().debug("enabling " + e.getDeclaringClass().toString() + "." + e.name() + "");
-            Method method = Json.mapper().getClass().getMethod("configure",e.getClass(),boolean.class);
-            method.invoke(Json.mapper(),e,enabled);
+            int i = feature.lastIndexOf(".");
+            Class clazz = Class.forName(feature.substring(0, i));
+            Enum e = Enum.valueOf(clazz, feature.substring(i + 1));
+            getLog().debug("enabling " + e.getDeclaringClass()
+                                          .toString() + "." + e.name() + "");
+            Method method = Json.mapper()
+                                .getClass()
+                                .getMethod("configure", e.getClass(), boolean.class);
+            method.invoke(Json.mapper(), e, enabled);
         }
     }
 
