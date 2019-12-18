@@ -1,6 +1,7 @@
 package com.github.kongchen.swagger.docgen.reader;
 
 import com.github.kongchen.swagger.docgen.GenerateException;
+import com.github.kongchen.swagger.docgen.mavenplugin.ApiSource;
 import com.github.kongchen.swagger.docgen.spring.SpringResource;
 import com.github.kongchen.swagger.docgen.spring.SpringSwaggerExtension;
 import com.github.kongchen.swagger.docgen.util.SpringUtils;
@@ -39,10 +40,13 @@ public class SpringMvcApiReader extends AbstractReader implements ClassSwaggerRe
 
     private final SpringExceptionHandlerReader exceptionHandlerReader;
 
+    private final ApiSource apiSource;
+
     private String resourcePath;
 
-    public SpringMvcApiReader(Swagger swagger, Log log) {
+    public SpringMvcApiReader(ApiSource apiSource, Swagger swagger, Log log) {
         super(swagger, log);
+        this.apiSource = apiSource;
         exceptionHandlerReader = new SpringExceptionHandlerReader(log);
     }
 
@@ -114,20 +118,7 @@ public class SpringMvcApiReader extends AbstractReader implements ClassSwaggerRe
 
                 Map<String, String> regexMap = new HashMap<String, String>();
                 String operationPath = parseOperationPath(path, regexMap);
-                RequestMethod[] requestMethods = requestMapping.method();
-
-                // 如果没有手动指定method
-                if (requestMethods.length == 0) {
-                    // 没有入参
-                    if (method.getParameterCount() == 0) {
-                        requestMethods = new RequestMethod[]{RequestMethod.GET};
-                    }
-//                    // 如果入参有RequestBody, 那么使用post
-//                    else if (parameterHasAnnotation(method.getParameterAnnotations(), RequestBody.class)) {
-//                        requestMethods = new RequestMethod[]{RequestMethod.POST};
-//                    }
-                    LOG.warn(String.format("类[ %s ]方式[ %s ]设置了RequestMapping但是没有设置method, 动态判断添加结果 => [ %s ]", resource.getControllerClass(), method, requestMethods));
-                }
+                RequestMethod[] requestMethods = getRequestMethod(requestMapping.method(), method, true);
 
                 //http method
                 for (RequestMethod requestMethod : requestMethods) {
@@ -157,27 +148,45 @@ public class SpringMvcApiReader extends AbstractReader implements ClassSwaggerRe
         return swagger;
     }
 
-//    /**
-//     * 参数注解是否含有特定注解
-//     *
-//     * @param annss
-//     * @param target
-//     * @return
-//     */
-//    private boolean parameterHasAnnotation(Annotation[][] annss, Class target) {
-//        return Optional.ofNullable(annss)
-//                       .map(ps -> {
-//                           for (Annotation[] anns : annss) {
-//                               for (Annotation ann : anns) {
-//                                   if (ann.annotationType() == target) {
-//                                       return true;
-//                                   }
-//                               }
-//                           }
-//                           return false;
-//                       })
-//                       .orElse(false);
-//    }
+    private RequestMethod[] getRequestMethod(RequestMethod[] origin, Method method, boolean buildPharse){
+        // 如果没有手动指定method
+        if (origin.length == 0) {
+            // 没有入参
+            if (method.getParameterCount() == 0) {
+                origin = new RequestMethod[]{RequestMethod.GET};
+            }
+            // 如果入参有RequestBody, 那么使用post
+            else if (parameterHasAnnotation(method.getParameterAnnotations(), RequestBody.class)) {
+                origin = new RequestMethod[]{RequestMethod.POST};
+            }
+            // 直接使用默认配置项目里面的method
+            else if (StringUtils.isNotBlank(apiSource.getDefaultRequestMethod())) {
+                origin = new RequestMethod[]{RequestMethod.valueOf(apiSource.getDefaultRequestMethod())};
+            }
+            if (buildPharse){
+                LOG.warn(String.format("方法[ %s ]设置了RequestMapping但是没有设置method, 动态判断添加结果 => [ %s ]",  method.getName(), origin));
+            }
+        }
+        return origin;
+    }
+
+    /**
+     * 参数注解是否含有特定注解
+     *
+     * @param annss
+     * @param target
+     * @return
+     */
+    private boolean parameterHasAnnotation(Annotation[][] annss, Class target) {
+        for (Annotation[] anns : annss) {
+            for (Annotation ann : anns) {
+                if (ann.annotationType() == target) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
 
     private Operation parseMethod(Method method, RequestMethod requestMethod) {
         int responseCode = 200;
@@ -347,6 +356,7 @@ public class SpringMvcApiReader extends AbstractReader implements ClassSwaggerRe
             List<Annotation> annotations = Arrays.asList(paramAnnotations[i]);
             List<Parameter> parameters = getParameters(type, annotations);
 
+
             for (Parameter parameter : parameters) {
                 if (parameter.getName()
                              .isEmpty()) {
@@ -438,7 +448,7 @@ public class SpringMvcApiReader extends AbstractReader implements ClassSwaggerRe
 
                 // Look for method-level @RequestMapping annotation
                 if (methodRequestMapping != null) {
-                    RequestMethod[] requestMappingRequestMethods = methodRequestMapping.method();
+                    RequestMethod[] requestMappingRequestMethods = getRequestMethod(methodRequestMapping.method(), method, false);
 
                     // For each method-level @RequestMapping annotation, iterate over HTTP Verb
                     for (RequestMethod requestMappingRequestMethod : requestMappingRequestMethods) {

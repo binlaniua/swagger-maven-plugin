@@ -31,6 +31,6 @@ public class SpringMavenDocumentSource extends AbstractDocumentSource<SpringMvcA
 
     @Override
     protected SpringMvcApiReader createReader() {
-        return new SpringMvcApiReader(swagger, LOG);
+        return new SpringMvcApiReader(apiSource, swagger, LOG);
     }
 }

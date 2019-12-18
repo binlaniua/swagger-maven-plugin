@@ -42,7 +42,7 @@ public abstract class AbstractReader {
     protected List<ResponseMessageOverride> responseMessageOverrides;
 
     protected String operationIdFormat;
-    
+
     /**
      * Supported parameters: {{packageName}}, {{className}}, {{methodName}}, {{httpMethod}}
      * Suggested default value is: "{{className}}_{{methodName}}_{{httpMethod}}"
@@ -343,9 +343,14 @@ public abstract class AbstractReader {
 
     // this method exists so that outside callers can choose their own custom types to skip
     protected List<Parameter> getParameters(Type type, List<Annotation> annotations, Set<Type> typesToSkip) {
-        if (!hasValidAnnotations(annotations) || isApiParamHidden(annotations)) {
+        // 开发不规范有的入参并没有加任何注解
+//        if (!hasValidAnnotations(annotations) || isApiParamHidden(annotations)) {
+//            return Collections.emptyList();
+//        }
+        if (isApiParamHidden(annotations)){
             return Collections.emptyList();
         }
+
 
         Iterator<SwaggerExtension> chain = SwaggerExtensions.chain();
         List<Parameter> parameters = new ArrayList<>();
@@ -522,22 +527,22 @@ public abstract class AbstractReader {
             extension.decorateOperation(operation, method, chain);
         }
     }
-    
+
     protected String getOperationId(Method method, String httpMethod) {
   		if (this.operationIdFormat == null) {
   			this.operationIdFormat = OPERATION_ID_FORMAT_DEFAULT;
   		}
-  		
+
   		String packageName = method.getDeclaringClass().getPackage().getName();
   		String className = method.getDeclaringClass().getSimpleName();
   		String methodName = method.getName();
-        
+
   		StrBuilder sb = new StrBuilder(this.operationIdFormat);
   		sb.replaceAll("{{packageName}}", packageName);
   		sb.replaceAll("{{className}}", className);
   		sb.replaceAll("{{methodName}}", methodName);
   		sb.replaceAll("{{httpMethod}}", httpMethod);
-  		
+
   		return sb.toString();
     }
 
