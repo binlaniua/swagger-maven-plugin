@@ -5,6 +5,7 @@ import com.github.kongchen.swagger.docgen.GenerateException;
 import io.swagger.models.Info;
 import io.swagger.util.Json;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.maven.model.Model;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
@@ -17,9 +18,12 @@ import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.project.MavenProjectHelper;
 
-import java.io.File;
+import java.io.*;
 import java.lang.reflect.Method;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.List;
+import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -43,6 +47,12 @@ public class ApiDocumentMojo extends AbstractMojo {
      */
     @Parameter
     private List<String> enabledObjectMapperFeatures;
+
+    /**
+     *
+     */
+    @Parameter
+    private List<String> callbacks;
 
     /**
      * A set of feature enums which should be enabled on the JSON object mapper
@@ -93,7 +103,8 @@ public class ApiDocumentMojo extends AbstractMojo {
         }
 
         // 自动设置info进apiSource
-        Model model = project.getParent().getModel();
+        Model model = project.getParent()
+                             .getModel();
         Info info = new Info();
         info.setTitle(model.getName());
         info.setVersion(model.getVersion());
@@ -157,6 +168,7 @@ public class ApiDocumentMojo extends AbstractMojo {
                                     : swaggerFileName;
                             File swaggerFile = new File(apiSource.getSwaggerDirectory(), swaggerFileName + "." + format.toLowerCase());
                             projectHelper.attachArtifact(project, format.toLowerCase(), classifier, swaggerFile);
+                            notifyCallback(swaggerFile);
                         }
                     }
                 }
@@ -165,6 +177,38 @@ public class ApiDocumentMojo extends AbstractMojo {
             throw new MojoFailureException(e.getMessage(), e);
         } catch (Exception e) {
             throw new MojoExecutionException(e.getMessage(), e);
+        }
+    }
+
+    private void notifyCallback(File swaggerFile) {
+        if (callbacks == null || callbacks.isEmpty()) {
+            return;
+        }
+        try {
+            String fileBody = FileUtils.readFileToString(swaggerFile, "UTF-8");
+            for (String callback : callbacks) {
+                URL httpUrl = new URL(callback);
+                HttpURLConnection conn = (HttpURLConnection) httpUrl.openConnection();
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setRequestProperty("connection", "close");
+                conn.setUseCaches(false);//设置不要缓存
+                conn.setInstanceFollowRedirects(true);
+                conn.setDoOutput(true);
+                conn.setDoInput(true);
+                conn.connect();
+                try (
+                        OutputStreamWriter out = new OutputStreamWriter(conn.getOutputStream());
+                        BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()))
+                ) {
+                    out.write(fileBody);
+                    out.flush();
+                    while ((reader.readLine()) != null) {
+                    }
+                }
+                conn.disconnect();
+            }
+        } catch (IOException e) {
         }
     }
 
