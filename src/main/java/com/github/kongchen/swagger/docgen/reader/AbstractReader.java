@@ -50,56 +50,58 @@ public abstract class AbstractReader {
     public static final String OPERATION_ID_FORMAT_DEFAULT = "{{methodName}}";
 
     public Set<Type> getTypesToSkip() {
-        return typesToSkip;
+        return this.typesToSkip;
     }
 
-    public void setTypesToSkip(List<Type> typesToSkip) {
+    public void setTypesToSkip(final List<Type> typesToSkip) {
         this.typesToSkip = new HashSet<Type>(typesToSkip);
     }
 
-    public void setTypesToSkip(Set<Type> typesToSkip) {
+    public void setTypesToSkip(final Set<Type> typesToSkip) {
         this.typesToSkip = typesToSkip;
     }
 
-    public void addTypeToSkippedTypes(Type type) {
+    public void addTypeToSkippedTypes(final Type type) {
         this.typesToSkip.add(type);
     }
 
-    public void setResponseMessageOverrides(List<ResponseMessageOverride> responseMessageOverrides) {
+    public void setResponseMessageOverrides(final List<ResponseMessageOverride> responseMessageOverrides) {
         this.responseMessageOverrides = responseMessageOverrides;
     }
 
     public List<ResponseMessageOverride> getResponseMessageOverrides() {
-        return responseMessageOverrides;
+        return this.responseMessageOverrides;
     }
 
-    public AbstractReader(Swagger swagger, Log LOG) {
+    public AbstractReader(final Swagger swagger, final Log LOG) {
         this.swagger = swagger;
         this.LOG = LOG;
-        updateExtensionChain();
+        this.updateExtensionChain();
     }
 
     /**
      * Method which allows sub-classes to modify the Swagger extension chain.
      */
     protected void updateExtensionChain() {
-    	// default implementation does nothing
+        // default implementation does nothing
     }
 
-    protected List<SecurityRequirement> getSecurityRequirements(Api api) {
-        List<SecurityRequirement> securities = new ArrayList<>();
-        if(api == null) {
+    protected List<SecurityRequirement> getSecurityRequirements(final Api api) {
+        final List<SecurityRequirement> securities = new ArrayList<>();
+        if (api == null) {
             return securities;
         }
 
-        for (Authorization auth : api.authorizations()) {
-            if (auth.value().isEmpty()) {
+        for (final Authorization auth : api.authorizations()) {
+            if (auth.value()
+                    .isEmpty()) {
                 continue;
             }
-            SecurityRequirement security = new SecurityRequirement();
+            final SecurityRequirement security = new SecurityRequirement();
             security.setName(auth.value());
-            for (AuthorizationScope scope : auth.scopes()) {
-                if (!scope.scope().isEmpty()) {
+            for (final AuthorizationScope scope : auth.scopes()) {
+                if (!scope.scope()
+                          .isEmpty()) {
                     security.addScope(scope.scope());
                 }
             }
@@ -108,65 +110,71 @@ public abstract class AbstractReader {
         return securities;
     }
 
-    protected String parseOperationPath(String operationPath, Map<String, String> regexMap) {
+    protected String parseOperationPath(final String operationPath, final Map<String, String> regexMap) {
         return PathUtils.parsePath(operationPath, regexMap);
     }
 
-    protected void updateOperationParameters(List<Parameter> parentParameters, Map<String, String> regexMap, Operation operation) {
+    protected void updateOperationParameters(final List<Parameter> parentParameters, final Map<String, String> regexMap, final Operation operation) {
         if (parentParameters != null) {
-            for (Parameter param : parentParameters) {
+            for (final Parameter param : parentParameters) {
                 operation.parameter(param);
             }
         }
-        for (Parameter param : operation.getParameters()) {
-            String pattern = regexMap.get(param.getName());
+        for (final Parameter param : operation.getParameters()) {
+            final String pattern = regexMap.get(param.getName());
             if (pattern != null) {
                 param.setPattern(pattern);
             }
         }
     }
 
-    protected void overrideResponseMessages(Operation operation) {
-        if (responseMessageOverrides != null) {
-            for (ResponseMessageOverride responseMessage : responseMessageOverrides) {
-                operation.response(responseMessage.getCode(), createResponse(responseMessage));
+    protected void overrideResponseMessages(final Operation operation) {
+        if (this.responseMessageOverrides != null) {
+            for (final ResponseMessageOverride responseMessage : this.responseMessageOverrides) {
+                operation.response(responseMessage.getCode(), this.createResponse(responseMessage));
             }
         }
     }
 
-    private Response createResponse(ResponseMessageOverride responseMessage) {
-        Response response = new Response()
+    private Response createResponse(final ResponseMessageOverride responseMessage) {
+        final Response response = new Response()
                 .description(responseMessage.getMessage());
         if (responseMessage.getExample() != null) {
             response.example(
-                    responseMessage.getExample().getMediaType(),
-                    responseMessage.getExample().getValue());
+                    responseMessage.getExample()
+                                   .getMediaType(),
+                    responseMessage.getExample()
+                                   .getValue());
         }
         return response;
     }
 
-    protected Map<String, Property> parseResponseHeaders(ResponseHeader[] headers) {
+    protected Map<String, Property> parseResponseHeaders(final ResponseHeader[] headers) {
         if (headers == null) {
             return null;
         }
         Map<String, Property> responseHeaders = null;
-        for (ResponseHeader header : headers) {
-            if (header.name().isEmpty()) {
+        for (final ResponseHeader header : headers) {
+            if (header.name()
+                      .isEmpty()) {
                 continue;
             }
             if (responseHeaders == null) {
                 responseHeaders = new HashMap<>();
             }
-            Class<?> cls = header.response();
+            final Class<?> cls = header.response();
 
             if (!cls.equals(Void.class) && !cls.equals(void.class)) {
-                Property property = ModelConverters.getInstance().readAsProperty(cls);
+                final Property property = ModelConverters.getInstance()
+                                                         .readAsProperty(cls);
                 if (property != null) {
-                    Property responseProperty;
+                    final Property responseProperty;
 
-                    if (header.responseContainer().equalsIgnoreCase("list")) {
+                    if (header.responseContainer()
+                              .equalsIgnoreCase("list")) {
                         responseProperty = new ArrayProperty(property);
-                    } else if (header.responseContainer().equalsIgnoreCase("map")) {
+                    } else if (header.responseContainer()
+                                     .equalsIgnoreCase("map")) {
                         responseProperty = new MapProperty(property);
                     } else {
                         responseProperty = property;
@@ -179,42 +187,42 @@ public abstract class AbstractReader {
         return responseHeaders;
     }
 
-    protected void updatePath(String operationPath, String httpMethod, Operation operation) {
+    protected void updatePath(final String operationPath, final String httpMethod, final Operation operation) {
         if (httpMethod == null) {
             return;
         }
-        Path path = swagger.getPath(operationPath);
+        Path path = this.swagger.getPath(operationPath);
         if (path == null) {
             path = new Path();
-            swagger.path(operationPath, path);
+            this.swagger.path(operationPath, path);
         }
         path.set(httpMethod, operation);
     }
 
-    protected void updateTagsForOperation(Operation operation, ApiOperation apiOperation) {
+    protected void updateTagsForOperation(final Operation operation, final ApiOperation apiOperation) {
         if (apiOperation == null) {
             return;
         }
-        for (String tag : apiOperation.tags()) {
+        for (final String tag : apiOperation.tags()) {
             if (!tag.isEmpty()) {
                 operation.tag(tag);
-                swagger.tag(new Tag().name(tag));
+                this.swagger.tag(new Tag().name(tag));
             }
         }
     }
 
-    protected boolean canReadApi(boolean readHidden, Api api) {
+    protected boolean canReadApi(final boolean readHidden, final Api api) {
         return (api == null) || (readHidden) || (!api.hidden());
     }
 
-    protected Set<Tag> extractTags(Api api) {
-        Set<Tag> output = new LinkedHashSet<>();
-        if(api == null) {
+    protected Set<Tag> extractTags(final Api api) {
+        final Set<Tag> output = new LinkedHashSet<>();
+        if (api == null) {
             return output;
         }
 
         boolean hasExplicitTags = false;
-        for (String tag : api.tags()) {
+        for (final String tag : api.tags()) {
             if (!tag.isEmpty()) {
                 hasExplicitTags = true;
                 output.add(new Tag().name(tag));
@@ -222,10 +230,12 @@ public abstract class AbstractReader {
         }
         if (!hasExplicitTags) {
             // derive tag from api path + description
-            String tagString = api.value().replace("/", "");
+            final String tagString = api.value()
+                                        .replace("/", "");
             if (!tagString.isEmpty()) {
-                Tag tag = new Tag().name(tagString);
-                if (!api.description().isEmpty()) {
+                final Tag tag = new Tag().name(tagString);
+                if (!api.description()
+                        .isEmpty()) {
                     tag.description(api.description());
                 }
                 output.add(tag);
@@ -234,65 +244,66 @@ public abstract class AbstractReader {
         return output;
     }
 
-    protected void updateOperationProtocols(ApiOperation apiOperation, Operation operation) {
-        if(apiOperation == null) {
+    protected void updateOperationProtocols(final ApiOperation apiOperation, final Operation operation) {
+        if (apiOperation == null) {
             return;
         }
-        String[] protocols = apiOperation.protocols().split(",");
-        for (String protocol : protocols) {
-            String trimmed = protocol.trim();
+        final String[] protocols = apiOperation.protocols()
+                                               .split(",");
+        for (final String protocol : protocols) {
+            final String trimmed = protocol.trim();
             if (!trimmed.isEmpty()) {
                 operation.scheme(Scheme.forValue(trimmed));
             }
         }
     }
 
-    protected Map<String, Tag> updateTagsForApi(Map<String, Tag> parentTags, Api api) {
+    protected Map<String, Tag> updateTagsForApi(final Map<String, Tag> parentTags, final Api api) {
         // the value will be used as a tag for 2.0 UNLESS a Tags annotation is present
-        Map<String, Tag> tagsMap = new HashMap<>();
-        for (Tag tag : extractTags(api)) {
+        final Map<String, Tag> tagsMap = new HashMap<>();
+        for (final Tag tag : this.extractTags(api)) {
             tagsMap.put(tag.getName(), tag);
         }
         if (parentTags != null) {
             tagsMap.putAll(parentTags);
         }
-        for (Tag tag : tagsMap.values()) {
-            swagger.tag(tag);
+        for (final Tag tag : tagsMap.values()) {
+            this.swagger.tag(tag);
         }
         return tagsMap;
     }
 
-    protected boolean isPrimitive(Type cls) {
+    protected boolean isPrimitive(final Type cls) {
         return com.github.kongchen.swagger.docgen.util.TypeUtils.isPrimitive(cls);
     }
 
-    protected void updateOperation(String[] apiConsumes, String[] apiProduces, Map<String, Tag> tags, List<SecurityRequirement> securities, Operation operation) {
+    protected void updateOperation(final String[] apiConsumes, final String[] apiProduces, final Map<String, Tag> tags, final List<SecurityRequirement> securities, final Operation operation) {
         if (operation == null) {
             return;
         }
         if (operation.getConsumes() == null) {
-            for (String mediaType : apiConsumes) {
+            for (final String mediaType : apiConsumes) {
                 operation.consumes(mediaType);
             }
         }
         if (operation.getProduces() == null) {
-            for (String mediaType : apiProduces) {
+            for (final String mediaType : apiProduces) {
                 operation.produces(mediaType);
             }
         }
 
         if (operation.getTags() == null) {
-            for (String tagString : tags.keySet()) {
+            for (final String tagString : tags.keySet()) {
                 operation.tag(tagString);
             }
         }
-        for (SecurityRequirement security : securities) {
+        for (final SecurityRequirement security : securities) {
             operation.security(security);
         }
     }
 
-    private boolean isApiParamHidden(List<Annotation> parameterAnnotations) {
-        for (Annotation parameterAnnotation : parameterAnnotations) {
+    private boolean isApiParamHidden(final List<Annotation> parameterAnnotations) {
+        for (final Annotation parameterAnnotation : parameterAnnotations) {
             if (parameterAnnotation instanceof ApiParam) {
                 return ((ApiParam) parameterAnnotation).hidden();
             }
@@ -301,14 +312,14 @@ public abstract class AbstractReader {
         return false;
     }
 
-    private boolean hasValidAnnotations(List<Annotation> parameterAnnotations) {
+    private boolean hasValidAnnotations(final List<Annotation> parameterAnnotations) {
         // Because method parameters can contain parameters that are valid, but
         // not part of the API contract, first check to make sure the parameter
         // has at lease one annotation before processing it.  Also, check a
         // whitelist to make sure that the annotation of the parameter is
         // compatible with spring-maven-plugin
 
-        List<Type> validParameterAnnotations = new ArrayList<>();
+        final List<Type> validParameterAnnotations = new ArrayList<>();
         validParameterAnnotations.add(ModelAttribute.class);
         validParameterAnnotations.add(BeanParam.class);
         validParameterAnnotations.add(InjectParam.class);
@@ -326,7 +337,7 @@ public abstract class AbstractReader {
 
 
         boolean hasValidAnnotation = false;
-        for (Annotation potentialAnnotation : parameterAnnotations) {
+        for (final Annotation potentialAnnotation : parameterAnnotations) {
             if (validParameterAnnotations.contains(potentialAnnotation.annotationType())) {
                 hasValidAnnotation = true;
                 break;
@@ -337,42 +348,42 @@ public abstract class AbstractReader {
     }
 
     // this is final to enforce that only the implementation method below can be overridden, to avoid confusion
-    protected final List<Parameter> getParameters(Type type, List<Annotation> annotations) {
-        return getParameters(type, annotations, typesToSkip);
+    protected final List<Parameter> getParameters(final Type type, final List<Annotation> annotations) {
+        return this.getParameters(type, annotations, this.typesToSkip);
     }
 
     // this method exists so that outside callers can choose their own custom types to skip
-    protected List<Parameter> getParameters(Type type, List<Annotation> annotations, Set<Type> typesToSkip) {
+    protected List<Parameter> getParameters(final Type type, final List<Annotation> annotations, final Set<Type> typesToSkip) {
         // 开发不规范有的入参并没有加任何注解
 //        if (!hasValidAnnotations(annotations) || isApiParamHidden(annotations)) {
 //            return Collections.emptyList();
 //        }
-        if (isApiParamHidden(annotations)){
+        if (this.isApiParamHidden(annotations)) {
             return Collections.emptyList();
         }
 
 
-        Iterator<SwaggerExtension> chain = SwaggerExtensions.chain();
+        final Iterator<SwaggerExtension> chain = SwaggerExtensions.chain();
         List<Parameter> parameters = new ArrayList<>();
-        Class<?> cls = TypeUtils.getRawType(type, type);
-        LOG.debug("Looking for path/query/header/form/cookie params in " + cls);
+        final Class<?> cls = TypeUtils.getRawType(type, type);
+        this.LOG.debug("Looking for path/query/header/form/cookie params in " + cls);
 
         if (chain.hasNext()) {
-            SwaggerExtension extension = chain.next();
-            LOG.debug("trying extension " + extension);
+            final SwaggerExtension extension = chain.next();
+            this.LOG.debug("trying extension " + extension);
             parameters = extension.extractParameters(annotations, type, typesToSkip, chain);
         }
 
         if (!parameters.isEmpty()) {
-            for (Parameter parameter : parameters) {
-                ParameterProcessor.applyAnnotations(swagger, parameter, type, annotations);
+            for (final Parameter parameter : parameters) {
+                ParameterProcessor.applyAnnotations(this.swagger, parameter, type, annotations);
             }
         } else {
-            LOG.debug("Looking for body params in " + cls);
+            this.LOG.debug("Looking for body params in " + cls);
             // parameters is guaranteed to be empty at this point, replace it with a mutable collection
             parameters = Lists.newArrayList();
             if (!typesToSkip.contains(type)) {
-                Parameter param = ParameterProcessor.applyAnnotations(swagger, null, type, annotations);
+                final Parameter param = ParameterProcessor.applyAnnotations(this.swagger, null, type, annotations);
                 if (param != null) {
                     parameters.add(param);
                 }
@@ -381,44 +392,48 @@ public abstract class AbstractReader {
         return parameters;
     }
 
-    protected void updateApiResponse(Operation operation, ApiResponses responseAnnotation) {
+    protected void updateApiResponse(final Operation operation, final ApiResponses responseAnnotation) {
         boolean contains200 = false;
         boolean contains2xx = false;
-        for (ApiResponse apiResponse : responseAnnotation.value()) {
-            Map<String, Property> responseHeaders = parseResponseHeaders(apiResponse.responseHeaders());
-            Class<?> responseClass = apiResponse.response();
-            Response response = new Response()
+        for (final ApiResponse apiResponse : responseAnnotation.value()) {
+            final Map<String, Property> responseHeaders = this.parseResponseHeaders(apiResponse.responseHeaders());
+            final Class<?> responseClass = apiResponse.response();
+            final Response response = new Response()
                     .description(apiResponse.message())
                     .headers(responseHeaders);
 
             if (responseClass.equals(Void.class)) {
                 if (operation.getResponses() != null) {
-                    Response apiOperationResponse = operation.getResponses().get(String.valueOf(apiResponse.code()));
+                    final Response apiOperationResponse = operation.getResponses()
+                                                                   .get(String.valueOf(apiResponse.code()));
                     if (apiOperationResponse != null) {
                         response.setSchema(apiOperationResponse.getSchema());
                     }
                 }
-            } else if (isPrimitive(responseClass)) {
-                Property property = ModelConverters.getInstance().readAsProperty(responseClass);
+            } else if (this.isPrimitive(responseClass)) {
+                final Property property = ModelConverters.getInstance()
+                                                         .readAsProperty(responseClass);
                 if (property != null) {
                     response.setSchema(RESPONSE_CONTAINER_CONVERTER.withResponseContainer(apiResponse.responseContainer(), property));
                 }
             } else {
-                Map<String, Model> models = ModelConverters.getInstance().read(responseClass);
-                for (String key : models.keySet()) {
+                Map<String, Model> models = ModelConverters.getInstance()
+                                                           .read(responseClass);
+                for (final String key : models.keySet()) {
                     final Property schema = new RefProperty().asDefault(key);
                     response.setSchema(RESPONSE_CONTAINER_CONVERTER.withResponseContainer(apiResponse.responseContainer(), schema));
-                    swagger.model(key, models.get(key));
+                    this.swagger.model(key, models.get(key));
                 }
-                models = ModelConverters.getInstance().readAll(responseClass);
-                for (Map.Entry<String, Model> entry : models.entrySet()) {
-                    swagger.model(entry.getKey(), entry.getValue());
+                models = ModelConverters.getInstance()
+                                        .readAll(responseClass);
+                for (final Map.Entry<String, Model> entry : models.entrySet()) {
+                    this.swagger.model(entry.getKey(), entry.getValue());
                 }
 
                 if (response.getSchema() == null) {
-                    Map<String, Response> responses = operation.getResponses();
+                    final Map<String, Response> responses = operation.getResponses();
                     if (responses != null) {
-                        Response apiOperationResponse = responses.get(String.valueOf(apiResponse.code()));
+                        final Response apiOperationResponse = responses.get(String.valueOf(apiResponse.code()));
                         if (apiOperationResponse != null) {
                             response.setSchema(apiOperationResponse.getSchema());
                         }
@@ -438,7 +453,7 @@ public abstract class AbstractReader {
             }
         }
         if (!contains200 && contains2xx) {
-            Map<String, Response> responses = operation.getResponses();
+            final Map<String, Response> responses = operation.getResponses();
             //technically should not be possible at this point, added to be safe
             if (responses != null) {
                 responses.remove("200");
@@ -446,9 +461,9 @@ public abstract class AbstractReader {
         }
     }
 
-    protected String[] updateOperationProduces(String[] parentProduces, String[] apiProduces, Operation operation) {
+    protected String[] updateOperationProduces(final String[] parentProduces, String[] apiProduces, final Operation operation) {
         if (parentProduces != null) {
-            Set<String> both = new LinkedHashSet<>(Arrays.asList(apiProduces));
+            final Set<String> both = new LinkedHashSet<>(Arrays.asList(apiProduces));
             both.addAll(Arrays.asList(parentProduces));
             if (operation.getProduces() != null) {
                 both.addAll(operation.getProduces());
@@ -458,9 +473,9 @@ public abstract class AbstractReader {
         return apiProduces;
     }
 
-    protected String[] updateOperationConsumes(String[] parentConsumes, String[] apiConsumes, Operation operation) {
+    protected String[] updateOperationConsumes(final String[] parentConsumes, String[] apiConsumes, final Operation operation) {
         if (parentConsumes != null) {
-            Set<String> both = new LinkedHashSet<>(Arrays.asList(apiConsumes));
+            final Set<String> both = new LinkedHashSet<>(Arrays.asList(apiConsumes));
             both.addAll(Arrays.asList(parentConsumes));
             if (operation.getConsumes() != null) {
                 both.addAll(operation.getConsumes());
@@ -470,27 +485,29 @@ public abstract class AbstractReader {
         return apiConsumes;
     }
 
-    protected void readImplicitParameters(Method method, Operation operation) {
-        ApiImplicitParams implicitParams = AnnotationUtils.findAnnotation(method, ApiImplicitParams.class);
+    protected void readImplicitParameters(final Method method, final Operation operation) {
+        final ApiImplicitParams implicitParams = AnnotationUtils.findAnnotation(method, ApiImplicitParams.class);
         if (implicitParams == null) {
             return;
         }
-        for (ApiImplicitParam param : implicitParams.value()) {
-            Class<?> cls;
+        for (final ApiImplicitParam param : implicitParams.value()) {
+            final Class<?> cls;
             try {
                 cls = param.dataTypeClass() == Void.class ?
                         Class.forName(param.dataType()) :
                         param.dataTypeClass();
-            } catch (ClassNotFoundException e) {
-                cls = method.getDeclaringClass();
+            } catch (final ClassNotFoundException e) {
+                this.LOG.warn(String.format("定义了ApiImplicitParam, 但是找不到dataType[ %s ]", param.dataType()));
+                return;
             }
 
-            Parameter p = readImplicitParam(param, cls);
+            final Parameter p = this.readImplicitParam(param, cls);
             if (p != null) {
                 if (p instanceof BodyParameter) {
-                    Iterator<Parameter> iterator = operation.getParameters().iterator();
-                    while(iterator.hasNext()) {
-                        Parameter parameter = iterator.next();
+                    final Iterator<Parameter> iterator = operation.getParameters()
+                                                                  .iterator();
+                    while (iterator.hasNext()) {
+                        final Parameter parameter = iterator.next();
                         if (parameter instanceof BodyParameter) {
                             iterator.remove();
                         }
@@ -501,60 +518,69 @@ public abstract class AbstractReader {
         }
     }
 
-    protected Parameter readImplicitParam(ApiImplicitParam param, Class<?> apiClass) {
-        Parameter parameter;
-        if (param.paramType().equalsIgnoreCase("path")) {
+    protected Parameter readImplicitParam(final ApiImplicitParam param, final Class<?> apiClass) {
+        final Parameter parameter;
+        if (param.paramType()
+                 .equalsIgnoreCase("path")) {
             parameter = new PathParameter();
-        } else if (param.paramType().equalsIgnoreCase("query")) {
+        } else if (param.paramType()
+                        .equalsIgnoreCase("query")) {
             parameter = new QueryParameter();
-        } else if (param.paramType().equalsIgnoreCase("form") || param.paramType().equalsIgnoreCase("formData")) {
+        } else if (param.paramType()
+                        .equalsIgnoreCase("form") || param.paramType()
+                                                          .equalsIgnoreCase("formData")) {
             parameter = new FormParameter();
-        } else if (param.paramType().equalsIgnoreCase("body")) {
+        } else if (param.paramType()
+                        .equalsIgnoreCase("body")) {
             parameter = new BodyParameter();
-        } else if (param.paramType().equalsIgnoreCase("header")) {
+        } else if (param.paramType()
+                        .equalsIgnoreCase("header")) {
             parameter = new HeaderParameter();
         } else {
             return null;
         }
 
-        return ParameterProcessor.applyAnnotations(swagger, parameter, apiClass, Arrays.asList(new Annotation[]{param}));
+        return ParameterProcessor.applyAnnotations(this.swagger, parameter, apiClass, Arrays.asList(new Annotation[]{param}));
     }
 
-    void processOperationDecorator(Operation operation, Method method) {
+    void processOperationDecorator(final Operation operation, final Method method) {
         final Iterator<SwaggerExtension> chain = SwaggerExtensions.chain();
         if (chain.hasNext()) {
-            SwaggerExtension extension = chain.next();
+            final SwaggerExtension extension = chain.next();
             extension.decorateOperation(operation, method, chain);
         }
     }
 
-    protected String getOperationId(Method method, String httpMethod) {
-  		if (this.operationIdFormat == null) {
-  			this.operationIdFormat = OPERATION_ID_FORMAT_DEFAULT;
-  		}
+    protected String getOperationId(final Method method, final String httpMethod) {
+        if (this.operationIdFormat == null) {
+            this.operationIdFormat = OPERATION_ID_FORMAT_DEFAULT;
+        }
 
-  		String packageName = method.getDeclaringClass().getPackage().getName();
-  		String className = method.getDeclaringClass().getSimpleName();
-  		String methodName = method.getName();
+        final String packageName = method.getDeclaringClass()
+                                         .getPackage()
+                                         .getName();
+        final String className = method.getDeclaringClass()
+                                       .getSimpleName();
+        final String methodName = method.getName();
 
-  		StrBuilder sb = new StrBuilder(this.operationIdFormat);
-  		sb.replaceAll("{{packageName}}", packageName);
-  		sb.replaceAll("{{className}}", className);
-  		sb.replaceAll("{{methodName}}", methodName);
-  		sb.replaceAll("{{httpMethod}}", httpMethod);
+        final StrBuilder sb = new StrBuilder(this.operationIdFormat);
+        sb.replaceAll("{{packageName}}", packageName);
+        sb.replaceAll("{{className}}", className);
+        sb.replaceAll("{{methodName}}", methodName);
+        sb.replaceAll("{{httpMethod}}", httpMethod);
 
-  		return sb.toString();
+        return sb.toString();
     }
 
-    public List<Parameter> extractTypes(Class<?> cls, Set<Type> typesToSkip, List<Annotation> additionalAnnotations) {
-        TypeExtracter extractor = new TypeExtracter();
-        Collection<TypeWithAnnotations> typesWithAnnotations = extractor.extractTypes(cls);
+    public List<Parameter> extractTypes(final Class<?> cls, final Set<Type> typesToSkip, final List<Annotation> additionalAnnotations) {
+        final TypeExtracter extractor = new TypeExtracter();
+        final Collection<TypeWithAnnotations> typesWithAnnotations = extractor.extractTypes(cls);
 
-        List<Parameter> output = new ArrayList<Parameter>();
-        for (TypeWithAnnotations typeWithAnnotations : typesWithAnnotations) {
+        final List<Parameter> output = new ArrayList<Parameter>();
+        for (final TypeWithAnnotations typeWithAnnotations : typesWithAnnotations) {
 
-            Type type = typeWithAnnotations.getType();
-            List<Annotation> annotations = new ArrayList<Annotation>(additionalAnnotations);
+            final Type type = typeWithAnnotations.getType();
+            final List<Annotation> annotations = new ArrayList<Annotation>(additionalAnnotations);
             annotations.addAll(typeWithAnnotations.getAnnotations());
 
             /*
@@ -566,7 +592,7 @@ public abstract class AbstractReader {
              * classes are shared with SwaggerReaderTest and Swagger's own logic
              * doesn't prevent this problem.
              */
-            Set<Type> recurseTypesToSkip = new HashSet<Type>(typesToSkip);
+            final Set<Type> recurseTypesToSkip = new HashSet<Type>(typesToSkip);
             recurseTypesToSkip.add(cls);
 
             output.addAll(this.getParameters(type, annotations, recurseTypesToSkip));
@@ -575,12 +601,12 @@ public abstract class AbstractReader {
         return output;
     }
 
-	public String getOperationIdFormat() {
-		return operationIdFormat;
-	}
+    public String getOperationIdFormat() {
+        return this.operationIdFormat;
+    }
 
-	public void setOperationIdFormat(String operationIdFormat) {
-		this.operationIdFormat = operationIdFormat;
-	}
+    public void setOperationIdFormat(final String operationIdFormat) {
+        this.operationIdFormat = operationIdFormat;
+    }
 }
 

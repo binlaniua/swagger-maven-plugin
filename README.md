@@ -1,4 +1,7 @@
-
+## 原作者
+```
+https://github.com/kongchen/swagger-maven-plugin
+```
 
 ## 扩展点
 
@@ -7,6 +10,7 @@
 * 3. 优化如果没有设置RequestMethod, 会自动识别并增加配置项defaultRequestMethod来做默认method
 * 4. 优化参数没有注解也可被识别进swagger
 * 5. 构建完成后会把swagger.json上传到指定接口(post + json)
+* 6. 修复ApiImplicitParam的dataType找不到的话, 不使用controller
 
 
 ## 使用

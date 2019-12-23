@@ -15,11 +15,11 @@ import io.swagger.models.parameters.Parameter;
 import io.swagger.models.properties.Property;
 import io.swagger.models.properties.RefProperty;
 import io.swagger.util.BaseReaderUtils;
-import org.apache.commons.lang3.ArrayUtils;
 import org.apache.maven.plugin.logging.Log;
 import org.codehaus.plexus.util.StringUtils;
 import org.springframework.core.DefaultParameterNameDiscoverer;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.ReflectionUtils;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -44,45 +44,45 @@ public class SpringMvcApiReader extends AbstractReader implements ClassSwaggerRe
 
     private String resourcePath;
 
-    public SpringMvcApiReader(ApiSource apiSource, Swagger swagger, Log log) {
+    public SpringMvcApiReader(final ApiSource apiSource, final Swagger swagger, final Log log) {
         super(swagger, log);
         this.apiSource = apiSource;
-        exceptionHandlerReader = new SpringExceptionHandlerReader(log);
+        this.exceptionHandlerReader = new SpringExceptionHandlerReader(log);
     }
 
     @Override
     protected void updateExtensionChain() {
-        List<SwaggerExtension> extensions = new ArrayList<SwaggerExtension>();
-        extensions.add(new SpringSwaggerExtension(LOG));
+        final List<SwaggerExtension> extensions = new ArrayList<SwaggerExtension>();
+        extensions.add(new SpringSwaggerExtension(this.LOG));
         SwaggerExtensions.setExtensions(extensions);
     }
 
     @Override
-    public Swagger read(Set<Class<?>> classes) throws GenerateException {
+    public Swagger read(final Set<Class<?>> classes) throws GenerateException {
         //relate all methods to one base request mapping if multiple controllers exist for that mapping
         //get all methods from each controller & find their request mapping
         //create map - resource string (after first slash) as key, new SpringResource as value
-        Map<String, SpringResource> resourceMap = generateResourceMap(classes);
-        exceptionHandlerReader.processExceptionHandlers(classes);
-        for (SpringResource resource : resourceMap.values()) {
-            read(resource);
+        final Map<String, SpringResource> resourceMap = this.generateResourceMap(classes);
+        this.exceptionHandlerReader.processExceptionHandlers(classes);
+        for (final SpringResource resource : resourceMap.values()) {
+            this.read(resource);
         }
 
-        return swagger;
+        return this.swagger;
     }
 
-    public Swagger read(SpringResource resource) {
-        if (swagger == null) {
-            swagger = new Swagger();
+    public Swagger read(final SpringResource resource) {
+        if (this.swagger == null) {
+            this.swagger = new Swagger();
         }
-        List<Method> methods = resource.getMethods();
+        final List<Method> methods = resource.getMethods();
         Map<String, Tag> tags = new HashMap<String, Tag>();
 
         List<SecurityRequirement> resourceSecurities = new ArrayList<SecurityRequirement>();
 
         // Add the description from the controller api
-        Class<?> controller = resource.getControllerClass();
-        RequestMapping controllerRM = findMergedAnnotation(controller, RequestMapping.class);
+        final Class<?> controller = resource.getControllerClass();
+        final RequestMapping controllerRM = findMergedAnnotation(controller, RequestMapping.class);
 
         String[] controllerProduces = new String[0];
         String[] controllerConsumes = new String[0];
@@ -91,44 +91,49 @@ public class SpringMvcApiReader extends AbstractReader implements ClassSwaggerRe
             controllerProduces = controllerRM.produces();
         }
 
+        Api api = null;
         if (controller.isAnnotationPresent(Api.class)) {
-            Api api = findMergedAnnotation(controller, Api.class);
-            if (!canReadApi(false, api)) {
-                return swagger;
+            api = findMergedAnnotation(controller, Api.class);
+            if (!this.canReadApi(false, api)) {
+                return this.swagger;
             }
-            tags = updateTagsForApi(null, api);
-            resourceSecurities = getSecurityRequirements(api);
+            tags = this.updateTagsForApi(null, api);
+            resourceSecurities = this.getSecurityRequirements(api);
         }
 
-        resourcePath = resource.getControllerMapping();
+        this.resourcePath = resource.getControllerMapping();
 
         //collect api from method with @RequestMapping
-        Map<String, List<Method>> apiMethodMap = collectApisByRequestMapping(methods);
+        final Map<String, List<Method>> apiMethodMap = this.collectApisByRequestMapping(methods);
 
-        for (String path : apiMethodMap.keySet()) {
-            for (Method method : apiMethodMap.get(path)) {
-                RequestMapping requestMapping = findMergedAnnotation(method, RequestMapping.class);
+        for (final String path : apiMethodMap.keySet()) {
+            for (final Method method : apiMethodMap.get(path)) {
+                final RequestMapping requestMapping = findMergedAnnotation(method, RequestMapping.class);
                 if (requestMapping == null) {
                     continue;
                 }
-                ApiOperation apiOperation = findMergedAnnotation(method, ApiOperation.class);
+                final ApiOperation apiOperation = findMergedAnnotation(method, ApiOperation.class);
                 if (apiOperation != null && apiOperation.hidden()) {
                     continue;
                 }
 
-                Map<String, String> regexMap = new HashMap<String, String>();
-                String operationPath = parseOperationPath(path, regexMap);
-                RequestMethod[] requestMethods = getRequestMethod(requestMapping.method(), method, true);
+                final Map<String, String> regexMap = new HashMap<String, String>();
+                final String operationPath = this.parseOperationPath(path, regexMap);
+                final RequestMethod[] requestMethods = this.getRequestMethod(requestMapping.method(), method, true);
 
                 //http method
-                for (RequestMethod requestMethod : requestMethods) {
-                    String httpMethod = requestMethod.toString()
-                                                     .toLowerCase();
-                    Operation operation = parseMethod(method, requestMethod);
+                for (final RequestMethod requestMethod : requestMethods) {
+                    final String httpMethod = requestMethod.toString()
+                                                           .toLowerCase();
+                    final Operation operation = this.parseMethod(method, requestMethod);
+                    if (api != null){
+                        operation.setSummary(api.description() + "-" + operation.getSummary());
+                    }
 
-                    updateOperationParameters(new ArrayList<Parameter>(), regexMap, operation);
 
-                    updateOperationProtocols(apiOperation, operation);
+                    this.updateOperationParameters(new ArrayList<Parameter>(), regexMap, operation);
+
+                    this.updateOperationProtocols(apiOperation, operation);
 
                     String[] apiProduces = requestMapping.produces();
                     String[] apiConsumes = requestMapping.consumes();
@@ -136,19 +141,19 @@ public class SpringMvcApiReader extends AbstractReader implements ClassSwaggerRe
                     apiProduces = (apiProduces.length == 0) ? controllerProduces : apiProduces;
                     apiConsumes = (apiConsumes.length == 0) ? controllerConsumes : apiConsumes;
 
-                    apiConsumes = updateOperationConsumes(new String[0], apiConsumes, operation);
-                    apiProduces = updateOperationProduces(new String[0], apiProduces, operation);
+                    apiConsumes = this.updateOperationConsumes(new String[0], apiConsumes, operation);
+                    apiProduces = this.updateOperationProduces(new String[0], apiProduces, operation);
 
-                    updateTagsForOperation(operation, apiOperation);
-                    updateOperation(apiConsumes, apiProduces, tags, resourceSecurities, operation);
-                    updatePath(operationPath, httpMethod, operation);
+                    this.updateTagsForOperation(operation, apiOperation);
+                    this.updateOperation(apiConsumes, apiProduces, tags, resourceSecurities, operation);
+                    this.updatePath(operationPath, httpMethod, operation);
                 }
             }
         }
-        return swagger;
+        return this.swagger;
     }
 
-    private RequestMethod[] getRequestMethod(RequestMethod[] origin, Method method, boolean buildPharse){
+    private RequestMethod[] getRequestMethod(RequestMethod[] origin, final Method method, final boolean buildPharse) {
         // 如果没有手动指定method
         if (origin.length == 0) {
             // 没有入参
@@ -156,15 +161,15 @@ public class SpringMvcApiReader extends AbstractReader implements ClassSwaggerRe
                 origin = new RequestMethod[]{RequestMethod.GET};
             }
             // 如果入参有RequestBody, 那么使用post
-            else if (parameterHasAnnotation(method.getParameterAnnotations(), RequestBody.class)) {
+            else if (this.parameterHasAnnotation(method.getParameterAnnotations(), RequestBody.class)) {
                 origin = new RequestMethod[]{RequestMethod.POST};
             }
             // 直接使用默认配置项目里面的method
-            else if (StringUtils.isNotBlank(apiSource.getDefaultRequestMethod())) {
-                origin = new RequestMethod[]{RequestMethod.valueOf(apiSource.getDefaultRequestMethod())};
+            else if (StringUtils.isNotBlank(this.apiSource.getDefaultRequestMethod())) {
+                origin = new RequestMethod[]{RequestMethod.valueOf(this.apiSource.getDefaultRequestMethod())};
             }
-            if (buildPharse){
-                LOG.warn(String.format("方法[ %s ]设置了RequestMapping但是没有设置method, 动态判断添加结果 => [ %s ]",  method.getName(), origin));
+            if (buildPharse) {
+                this.LOG.warn(String.format("方法[ %s ]设置了RequestMapping但是没有设置method, 动态判断添加结果 => [ %s ]", method.getName(), origin));
             }
         }
         return origin;
@@ -177,9 +182,9 @@ public class SpringMvcApiReader extends AbstractReader implements ClassSwaggerRe
      * @param target
      * @return
      */
-    private boolean parameterHasAnnotation(Annotation[][] annss, Class target) {
-        for (Annotation[] anns : annss) {
-            for (Annotation ann : anns) {
+    private boolean parameterHasAnnotation(final Annotation[][] annss, final Class target) {
+        for (final Annotation[] anns : annss) {
+            for (final Annotation ann : anns) {
                 if (ann.annotationType() == target) {
                     return true;
                 }
@@ -188,19 +193,19 @@ public class SpringMvcApiReader extends AbstractReader implements ClassSwaggerRe
         return false;
     }
 
-    private Operation parseMethod(Method method, RequestMethod requestMethod) {
+    private Operation parseMethod(final Method method, final RequestMethod requestMethod) {
         int responseCode = 200;
-        Operation operation = new Operation();
+        final Operation operation = new Operation();
 
-        RequestMapping requestMapping = findMergedAnnotation(method, RequestMapping.class);
+        final RequestMapping requestMapping = findMergedAnnotation(method, RequestMapping.class);
         Type responseClass = null;
-        List<String> produces = new ArrayList<String>();
-        List<String> consumes = new ArrayList<String>();
+        final List<String> produces = new ArrayList<String>();
+        final List<String> consumes = new ArrayList<String>();
         String responseContainer = null;
-        String operationId = getOperationId(method, requestMethod.name());
+        String operationId = this.getOperationId(method, requestMethod.name());
         Map<String, Property> defaultResponseHeaders = null;
 
-        ApiOperation apiOperation = findMergedAnnotation(method, ApiOperation.class);
+        final ApiOperation apiOperation = findMergedAnnotation(method, ApiOperation.class);
 
         if (apiOperation != null) {
             if (apiOperation.hidden()) {
@@ -211,12 +216,12 @@ public class SpringMvcApiReader extends AbstractReader implements ClassSwaggerRe
                 operationId = apiOperation.nickname();
             }
 
-            defaultResponseHeaders = parseResponseHeaders(apiOperation.responseHeaders());
+            defaultResponseHeaders = this.parseResponseHeaders(apiOperation.responseHeaders());
 
             operation.summary(apiOperation.value())
                      .description(apiOperation.notes());
 
-            Map<String, Object> customExtensions = BaseReaderUtils.parseExtensions(apiOperation.extensions());
+            final Map<String, Object> customExtensions = BaseReaderUtils.parseExtensions(apiOperation.extensions());
             operation.setVendorExtensions(customExtensions);
 
             if (!apiOperation.response()
@@ -229,13 +234,13 @@ public class SpringMvcApiReader extends AbstractReader implements ClassSwaggerRe
             }
 
             ///security
-            List<SecurityRequirement> securities = new ArrayList<SecurityRequirement>();
-            for (Authorization auth : apiOperation.authorizations()) {
+            final List<SecurityRequirement> securities = new ArrayList<SecurityRequirement>();
+            for (final Authorization auth : apiOperation.authorizations()) {
                 if (!auth.value()
                          .isEmpty()) {
-                    SecurityRequirement security = new SecurityRequirement();
+                    final SecurityRequirement security = new SecurityRequirement();
                     security.setName(auth.value());
-                    for (AuthorizationScope scope : auth.scopes()) {
+                    for (final AuthorizationScope scope : auth.scopes()) {
                         if (!scope.scope()
                                   .isEmpty()) {
                             security.addScope(scope.scope());
@@ -244,7 +249,7 @@ public class SpringMvcApiReader extends AbstractReader implements ClassSwaggerRe
                     securities.add(security);
                 }
             }
-            for (SecurityRequirement sec : securities) {
+            for (final SecurityRequirement sec : securities) {
                 operation.security(sec);
             }
 
@@ -253,7 +258,7 @@ public class SpringMvcApiReader extends AbstractReader implements ClassSwaggerRe
 
         if (responseClass == null) {
             // pick out response from method declaration
-            LOG.info("picking up response class from method " + method);
+            this.LOG.info("picking up response class from method " + method);
             responseClass = method.getGenericReturnType();
         }
         if (responseClass instanceof ParameterizedType && ResponseEntity.class.equals(((ParameterizedType) responseClass).getRawType())) {
@@ -267,97 +272,97 @@ public class SpringMvcApiReader extends AbstractReader implements ClassSwaggerRe
                 && !responseClass.equals(Void.class)
                 && !responseClass.equals(ResponseEntity.class)
                 && !hasApiAnnotation) {
-            if (isPrimitive(responseClass)) {
-                Property property = ModelConverters.getInstance()
-                                                   .readAsProperty(responseClass);
+            if (this.isPrimitive(responseClass)) {
+                final Property property = ModelConverters.getInstance()
+                                                         .readAsProperty(responseClass);
                 if (property != null) {
-                    Property responseProperty = RESPONSE_CONTAINER_CONVERTER.withResponseContainer(responseContainer, property);
+                    final Property responseProperty = RESPONSE_CONTAINER_CONVERTER.withResponseContainer(responseContainer, property);
                     operation.response(responseCode, new Response()
                             .description("successful operation")
                             .schema(responseProperty)
                             .headers(defaultResponseHeaders));
                 }
             } else if (!responseClass.equals(Void.class) && !responseClass.equals(void.class)) {
-                Map<String, Model> models = ModelConverters.getInstance()
-                                                           .read(responseClass);
+                final Map<String, Model> models = ModelConverters.getInstance()
+                                                                 .read(responseClass);
                 if (models.isEmpty()) {
-                    Property pp = ModelConverters.getInstance()
-                                                 .readAsProperty(responseClass);
+                    final Property pp = ModelConverters.getInstance()
+                                                       .readAsProperty(responseClass);
                     operation.response(responseCode, new Response()
                             .description("successful operation")
                             .schema(pp)
                             .headers(defaultResponseHeaders));
                 }
-                for (String key : models.keySet()) {
-                    Property responseProperty = RESPONSE_CONTAINER_CONVERTER.withResponseContainer(responseContainer, new RefProperty().asDefault(key));
+                for (final String key : models.keySet()) {
+                    final Property responseProperty = RESPONSE_CONTAINER_CONVERTER.withResponseContainer(responseContainer, new RefProperty().asDefault(key));
                     operation.response(responseCode, new Response()
                             .description("successful operation")
                             .schema(responseProperty)
                             .headers(defaultResponseHeaders));
-                    swagger.model(key, models.get(key));
+                    this.swagger.model(key, models.get(key));
                 }
             }
-            Map<String, Model> models = ModelConverters.getInstance()
-                                                       .readAll(responseClass);
-            for (Map.Entry<String, Model> entry : models.entrySet()) {
-                swagger.model(entry.getKey(), entry.getValue());
+            final Map<String, Model> models = ModelConverters.getInstance()
+                                                             .readAll(responseClass);
+            for (final Map.Entry<String, Model> entry : models.entrySet()) {
+                this.swagger.model(entry.getKey(), entry.getValue());
             }
         }
 
         operation.operationId(operationId);
 
-        for (String str : requestMapping.produces()) {
+        for (final String str : requestMapping.produces()) {
             if (!produces.contains(str)) {
                 produces.add(str);
             }
         }
-        for (String str : requestMapping.consumes()) {
+        for (final String str : requestMapping.consumes()) {
             if (!consumes.contains(str)) {
                 consumes.add(str);
             }
         }
 
-        ApiResponses responseAnnotation = findMergedAnnotation(method, ApiResponses.class);
+        final ApiResponses responseAnnotation = findMergedAnnotation(method, ApiResponses.class);
         if (responseAnnotation != null) {
-            updateApiResponse(operation, responseAnnotation);
+            this.updateApiResponse(operation, responseAnnotation);
         } else {
-            ResponseStatus responseStatus = findMergedAnnotation(method, ResponseStatus.class);
+            final ResponseStatus responseStatus = findMergedAnnotation(method, ResponseStatus.class);
             if (responseStatus != null) {
-                updateResponseStatus(operation, responseStatus);
+                this.updateResponseStatus(operation, responseStatus);
             }
         }
 
-        List<ResponseStatus> errorResponses = exceptionHandlerReader.getResponseStatusesFromExceptions(method);
-        for (ResponseStatus responseStatus : errorResponses) {
-            int code = responseStatus.code()
-                                     .value();
-            String description = defaultIfEmpty(responseStatus.reason(), responseStatus.code()
-                                                                                       .getReasonPhrase());
+        final List<ResponseStatus> errorResponses = this.exceptionHandlerReader.getResponseStatusesFromExceptions(method);
+        for (final ResponseStatus responseStatus : errorResponses) {
+            final int code = responseStatus.code()
+                                           .value();
+            final String description = defaultIfEmpty(responseStatus.reason(), responseStatus.code()
+                                                                                             .getReasonPhrase());
             operation.response(code, new Response().description(description));
         }
 
-        overrideResponseMessages(operation);
+        this.overrideResponseMessages(operation);
 
-        Deprecated annotation = findAnnotation(method, Deprecated.class);
+        final Deprecated annotation = findAnnotation(method, Deprecated.class);
         if (annotation != null) {
             operation.deprecated(true);
         }
 
         // process parameters
-        Class[] parameterTypes = method.getParameterTypes();
-        Type[] genericParameterTypes = method.getGenericParameterTypes();
-        Annotation[][] paramAnnotations = method.getParameterAnnotations();
-        DefaultParameterNameDiscoverer parameterNameDiscoverer = new DefaultParameterNameDiscoverer();
-        String[] parameterNames = parameterNameDiscoverer.getParameterNames(method);
+        final Class[] parameterTypes = method.getParameterTypes();
+        final Type[] genericParameterTypes = method.getGenericParameterTypes();
+        final Annotation[][] paramAnnotations = method.getParameterAnnotations();
+        final DefaultParameterNameDiscoverer parameterNameDiscoverer = new DefaultParameterNameDiscoverer();
+        final String[] parameterNames = parameterNameDiscoverer.getParameterNames(method);
         // paramTypes = method.getParameterTypes
         // genericParamTypes = method.getGenericParameterTypes
         for (int i = 0; i < parameterTypes.length; i++) {
-            Type type = genericParameterTypes[i];
-            List<Annotation> annotations = Arrays.asList(paramAnnotations[i]);
-            List<Parameter> parameters = getParameters(type, annotations);
+            final Type type = genericParameterTypes[i];
+            final List<Annotation> annotations = Arrays.asList(paramAnnotations[i]);
+            final List<Parameter> parameters = this.getParameters(type, annotations);
 
 
-            for (Parameter parameter : parameters) {
+            for (final Parameter parameter : parameters) {
                 if (parameter.getName()
                              .isEmpty()) {
                     parameter.setName(parameterNames[i]);
@@ -373,24 +378,24 @@ public class SpringMvcApiReader extends AbstractReader implements ClassSwaggerRe
         // Process @ApiImplicitParams
         this.readImplicitParameters(method, operation);
 
-        processOperationDecorator(operation, method);
+        this.processOperationDecorator(operation, method);
 
         return operation;
     }
 
-    private void updateResponseStatus(Operation operation, ResponseStatus responseStatus) {
-        int code = responseStatus.value()
-                                 .value();
-        String reason = responseStatus.reason();
+    private void updateResponseStatus(final Operation operation, final ResponseStatus responseStatus) {
+        final int code = responseStatus.value()
+                                       .value();
+        final String reason = responseStatus.reason();
 
         if (operation.getResponses() != null && operation.getResponses()
                                                          .size() == 1) {
-            String currentKey = operation.getResponses()
-                                         .keySet()
-                                         .iterator()
-                                         .next();
-            Response oldResponse = operation.getResponses()
-                                            .remove(currentKey);
+            final String currentKey = operation.getResponses()
+                                               .keySet()
+                                               .iterator()
+                                               .next();
+            final Response oldResponse = operation.getResponses()
+                                                  .remove(currentKey);
             if (StringUtils.isNotEmpty(reason)) {
                 oldResponse.setDescription(reason);
             }
@@ -400,22 +405,22 @@ public class SpringMvcApiReader extends AbstractReader implements ClassSwaggerRe
         }
     }
 
-    private Map<String, List<Method>> collectApisByRequestMapping(List<Method> methods) {
-        Map<String, List<Method>> apiMethodMap = new HashMap<String, List<Method>>();
-        for (Method method : methods) {
-            RequestMapping requestMapping = findMergedAnnotation(method, RequestMapping.class);
+    private Map<String, List<Method>> collectApisByRequestMapping(final List<Method> methods) {
+        final Map<String, List<Method>> apiMethodMap = new HashMap<String, List<Method>>();
+        for (final Method method : methods) {
+            final RequestMapping requestMapping = findMergedAnnotation(method, RequestMapping.class);
             if (requestMapping != null) {
-                String path;
+                final String path;
                 if (requestMapping.value().length != 0) {
-                    path = generateFullPath(requestMapping.value()[0]);
+                    path = this.generateFullPath(requestMapping.value()[0]);
                 } else {
-                    path = resourcePath;
+                    path = this.resourcePath;
                 }
                 if (apiMethodMap.containsKey(path)) {
                     apiMethodMap.get(path)
                                 .add(method);
                 } else {
-                    List<Method> ms = new ArrayList<Method>();
+                    final List<Method> ms = new ArrayList<Method>();
                     ms.add(method);
                     apiMethodMap.put(path, ms);
                 }
@@ -425,7 +430,7 @@ public class SpringMvcApiReader extends AbstractReader implements ClassSwaggerRe
         return apiMethodMap;
     }
 
-    private String generateFullPath(String path) {
+    private String generateFullPath(final String path) {
         if (StringUtils.isNotEmpty(path)) {
             return this.resourcePath + (path.startsWith("/") ? path : '/' + path);
         } else {
@@ -434,58 +439,61 @@ public class SpringMvcApiReader extends AbstractReader implements ClassSwaggerRe
     }
 
     //Helper method for loadDocuments()
-    private Map<String, SpringResource> analyzeController(Class<?> controllerClazz, Map<String, SpringResource> resourceMap, String description) {
-        String[] controllerRequestMappingValues = SpringUtils.getControllerResquestMapping(controllerClazz);
+    private Map<String, SpringResource> analyzeController(final Class<?> controllerClazz, final Map<String, SpringResource> resourceMap, final String description) {
+        final String[] controllerRequestMappingValues = SpringUtils.getControllerResquestMapping(controllerClazz);
 
         // Iterate over all value attributes of the class-level RequestMapping annotation
-        for (String controllerRequestMappingValue : controllerRequestMappingValues) {
-            for (Method method : controllerClazz.getMethods()) {
-                // Skip methods introduced by compiler
-                if (method.isSynthetic()) {
-                    continue;
-                }
-                RequestMapping methodRequestMapping = findMergedAnnotation(method, RequestMapping.class);
+        for (final String controllerRequestMappingValue : controllerRequestMappingValues) {
+            ReflectionUtils.doWithMethods(controllerClazz, new ReflectionUtils.MethodCallback() {
+                @Override
+                public void doWith(final Method method) throws IllegalArgumentException, IllegalAccessException {
+                    // Skip methods introduced by compiler
+                    if (method.isSynthetic()) {
+                        return;
+                    }
+                    final RequestMapping methodRequestMapping = findMergedAnnotation(method, RequestMapping.class);
 
-                // Look for method-level @RequestMapping annotation
-                if (methodRequestMapping != null) {
-                    RequestMethod[] requestMappingRequestMethods = getRequestMethod(methodRequestMapping.method(), method, false);
+                    // Look for method-level @RequestMapping annotation
+                    if (methodRequestMapping != null) {
+                        final RequestMethod[] requestMappingRequestMethods = SpringMvcApiReader.this.getRequestMethod(methodRequestMapping.method(), method, false);
 
-                    // For each method-level @RequestMapping annotation, iterate over HTTP Verb
-                    for (RequestMethod requestMappingRequestMethod : requestMappingRequestMethods) {
-                        String[] methodRequestMappingValues = methodRequestMapping.value();
+                        // For each method-level @RequestMapping annotation, iterate over HTTP Verb
+                        for (final RequestMethod requestMappingRequestMethod : requestMappingRequestMethods) {
+                            final String[] methodRequestMappingValues = methodRequestMapping.value();
 
-                        // Check for cases where method-level @RequestMapping#value is not set, and use the controllers @RequestMapping
-                        if (methodRequestMappingValues.length == 0) {
-                            // The map key is a concat of the following:
-                            //   1. The controller package
-                            //   2. The controller class name
-                            //   3. The controller-level @RequestMapping#value
-                            String resourceKey = controllerClazz.getCanonicalName() + controllerRequestMappingValue + requestMappingRequestMethod;
-                            if (!resourceMap.containsKey(resourceKey)) {
-                                resourceMap.put(
-                                        resourceKey,
-                                        new SpringResource(controllerClazz, controllerRequestMappingValue, resourceKey, description));
-                            }
-                            resourceMap.get(resourceKey)
-                                       .addMethod(method);
-                        } else {
-                            // Here we know that method-level @RequestMapping#value is populated, so
-                            // iterate over all the @RequestMapping#value attributes, and add them to the resource map.
-                            for (String methodRequestMappingValue : methodRequestMappingValues) {
-                                String resourceKey = controllerClazz.getCanonicalName() + controllerRequestMappingValue
-                                        + methodRequestMappingValue + requestMappingRequestMethod;
-                                if (!(controllerRequestMappingValue + methodRequestMappingValue).isEmpty()) {
-                                    if (!resourceMap.containsKey(resourceKey)) {
-                                        resourceMap.put(resourceKey, new SpringResource(controllerClazz, methodRequestMappingValue, resourceKey, description));
+                            // Check for cases where method-level @RequestMapping#value is not set, and use the controllers @RequestMapping
+                            if (methodRequestMappingValues.length == 0) {
+                                // The map key is a concat of the following:
+                                //   1. The controller package
+                                //   2. The controller class name
+                                //   3. The controller-level @RequestMapping#value
+                                final String resourceKey = controllerClazz.getCanonicalName() + controllerRequestMappingValue + requestMappingRequestMethod;
+                                if (!resourceMap.containsKey(resourceKey)) {
+                                    resourceMap.put(
+                                            resourceKey,
+                                            new SpringResource(controllerClazz, controllerRequestMappingValue, resourceKey, description));
+                                }
+                                resourceMap.get(resourceKey)
+                                           .addMethod(method);
+                            } else {
+                                // Here we know that method-level @RequestMapping#value is populated, so
+                                // iterate over all the @RequestMapping#value attributes, and add them to the resource map.
+                                for (final String methodRequestMappingValue : methodRequestMappingValues) {
+                                    final String resourceKey = controllerClazz.getCanonicalName() + controllerRequestMappingValue
+                                            + methodRequestMappingValue + requestMappingRequestMethod;
+                                    if (!(controllerRequestMappingValue + methodRequestMappingValue).isEmpty()) {
+                                        if (!resourceMap.containsKey(resourceKey)) {
+                                            resourceMap.put(resourceKey, new SpringResource(controllerClazz, methodRequestMappingValue, resourceKey, description));
+                                        }
+                                        resourceMap.get(resourceKey)
+                                                   .addMethod(method);
                                     }
-                                    resourceMap.get(resourceKey)
-                                               .addMethod(method);
                                 }
                             }
                         }
                     }
                 }
-            }
+            });
         }
         controllerClazz.getFields();
         controllerClazz.getDeclaredFields(); //<--In case developer declares a field without an associated getter/setter.
@@ -494,22 +502,22 @@ public class SpringMvcApiReader extends AbstractReader implements ClassSwaggerRe
         return resourceMap;
     }
 
-    protected Map<String, SpringResource> generateResourceMap(Set<Class<?>> validClasses) throws GenerateException {
+    protected Map<String, SpringResource> generateResourceMap(final Set<Class<?>> validClasses) throws GenerateException {
         Map<String, SpringResource> resourceMap = new HashMap<String, SpringResource>();
-        for (Class<?> aClass : validClasses) {
-            RequestMapping requestMapping = findAnnotation(aClass, RequestMapping.class);
+        for (final Class<?> aClass : validClasses) {
+            final RequestMapping requestMapping = findAnnotation(aClass, RequestMapping.class);
             //This try/catch block is to stop a bamboo build from failing due to NoClassDefFoundError
             //This occurs when a class or method loaded by reflections contains a type that has no dependency
             try {
-                resourceMap = analyzeController(aClass, resourceMap, "");
-                List<Method> mList = new ArrayList<Method>(Arrays.asList(aClass.getMethods()));
+                resourceMap = this.analyzeController(aClass, resourceMap, "");
+                final List<Method> mList = new ArrayList<Method>(Arrays.asList(aClass.getMethods()));
                 if (aClass.getSuperclass() != null) {
                     mList.addAll(Arrays.asList(aClass.getSuperclass()
                                                      .getMethods()));
                 }
-            } catch (NoClassDefFoundError e) {
-                LOG.error(e.getMessage());
-                LOG.info(aClass.getName());
+            } catch (final NoClassDefFoundError e) {
+                this.LOG.error(e.getMessage());
+                this.LOG.info(aClass.getName());
                 //exception occurs when a method type or annotation is not recognized by the plugin
             }
         }
