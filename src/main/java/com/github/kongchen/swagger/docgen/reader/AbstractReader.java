@@ -3,6 +3,8 @@ package com.github.kongchen.swagger.docgen.reader;
 import com.github.kongchen.swagger.docgen.ResponseMessageOverride;
 import com.github.kongchen.swagger.docgen.util.TypeExtracter;
 import com.github.kongchen.swagger.docgen.util.TypeWithAnnotations;
+import com.github.kongchen.swagger.docgen.validation.SimpleValidationExtractor;
+import com.github.kongchen.swagger.docgen.validation.ValidationExtractor;
 import com.google.common.collect.Lists;
 import com.sun.jersey.api.core.InjectParam;
 import io.swagger.annotations.*;
@@ -42,6 +44,8 @@ public abstract class AbstractReader {
     protected List<ResponseMessageOverride> responseMessageOverrides;
 
     protected String operationIdFormat;
+
+    protected ValidationExtractor validationExtractor = new SimpleValidationExtractor();
 
     /**
      * Supported parameters: {{packageName}}, {{className}}, {{methodName}}, {{httpMethod}}
@@ -387,10 +391,15 @@ public abstract class AbstractReader {
                 if (param != null) {
                     parameters.add(param);
                 }
+                // 如果param是body, 那么扩展验证规则进入
+                if (param != null && param instanceof BodyParameter) {
+                    validationExtractor.extract(this.swagger, (Class) type, (BodyParameter) param);
+                }
             }
         }
         return parameters;
     }
+
 
     protected void updateApiResponse(final Operation operation, final ApiResponses responseAnnotation) {
         boolean contains200 = false;
