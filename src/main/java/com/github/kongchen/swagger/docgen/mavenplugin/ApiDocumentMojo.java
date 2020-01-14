@@ -2,6 +2,7 @@ package com.github.kongchen.swagger.docgen.mavenplugin;
 
 import com.github.kongchen.swagger.docgen.AbstractDocumentSource;
 import com.github.kongchen.swagger.docgen.GenerateException;
+import com.github.kongchen.swagger.docgen.doc.JavaDoc;
 import io.swagger.models.Info;
 import io.swagger.util.Json;
 
@@ -23,9 +24,6 @@ import java.lang.reflect.Method;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.List;
-import java.util.Optional;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * User: kongchen
@@ -106,13 +104,18 @@ public class ApiDocumentMojo extends AbstractMojo {
         Model model = project.getParent()
                              .getModel();
         Info info = new Info();
-        info.setTitle(model.getName());
+        info.setTitle(project.getArtifactId());
         info.setVersion(model.getVersion());
         ApiSource source = apiSources.get(0);
         source.setSpringmvc(true); //肯定是mvc
         source.setInfo(info);
         source.setOutputFormats("json");
         source.setSwaggerDirectory("../swagger");
+
+        // 增加java doc
+        JavaDoc.getInstance()
+               .init(project);
+
 
         if (useSwaggerSpec11()) {
             throw new MojoExecutionException("You may use an old version of swagger which is not supported by swagger-maven-plugin 2.0+\n" +

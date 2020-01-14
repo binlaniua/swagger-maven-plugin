@@ -1,6 +1,7 @@
 package com.github.kongchen.swagger.docgen.reader;
 
 import com.github.kongchen.swagger.docgen.GenerateException;
+import com.github.kongchen.swagger.docgen.doc.JavaDoc;
 import com.github.kongchen.swagger.docgen.mavenplugin.ApiSource;
 import com.github.kongchen.swagger.docgen.spring.SpringResource;
 import com.github.kongchen.swagger.docgen.spring.SpringSwaggerExtension;
@@ -126,7 +127,7 @@ public class SpringMvcApiReader extends AbstractReader implements ClassSwaggerRe
                     final String httpMethod = requestMethod.toString()
                                                            .toLowerCase();
                     final Operation operation = this.parseMethod(method, requestMethod);
-                    if (api != null){
+                    if (api != null) {
                         operation.setSummary(api.description() + "-" + operation.getSummary());
                     }
 
@@ -254,6 +255,11 @@ public class SpringMvcApiReader extends AbstractReader implements ClassSwaggerRe
             }
 
             responseCode = apiOperation.code();
+        }
+        // 如果没有定义ApiOperation
+        else {
+            operation.setSummary(JavaDoc.getInstance()
+                                        .getMethodName(method));
         }
 
         if (responseClass == null) {
