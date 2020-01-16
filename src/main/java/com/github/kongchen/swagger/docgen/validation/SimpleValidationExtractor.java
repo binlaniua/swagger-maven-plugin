@@ -1,5 +1,6 @@
 package com.github.kongchen.swagger.docgen.validation;
 
+import com.github.kongchen.swagger.docgen.doc.JavaDoc;
 import com.github.kongchen.swagger.docgen.validation.transform.*;
 import io.swagger.models.Model;
 import io.swagger.models.ModelImpl;
@@ -62,6 +63,11 @@ public class SimpleValidationExtractor implements ValidationExtractor {
             Field field = ReflectionUtils.findField(paramType, pName);
             if (field == null) {
                 continue;
+            }
+
+            Property property = properties.get(pName);
+            if (StringUtils.isBlank(property.getDescription())){
+                property.setDescription(JavaDoc.getInstance().getFieldName(field)); //设置注释
             }
 
             // 是否是否有特定验证注解

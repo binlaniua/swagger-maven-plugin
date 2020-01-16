@@ -256,6 +256,10 @@ public class SpringMvcApiReader extends AbstractReader implements ClassSwaggerRe
 
             responseCode = apiOperation.code();
         }
+        // 用requestMapping的name
+        else if (StringUtils.isNotEmpty(requestMapping.name())) {
+            operation.setSummary(requestMapping.name());
+        }
         // 如果没有定义ApiOperation
         else {
             operation.setSummary(JavaDoc.getInstance()

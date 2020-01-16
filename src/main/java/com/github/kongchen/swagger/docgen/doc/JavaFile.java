@@ -83,13 +83,14 @@ public class JavaFile {
      */
     public void getMethodsFromJavaFile() {
         String fileString = getFileString();
-        String sectionRegex = JavaDocRegex.JAVADOC + "([\\s]*" + JavaDocRegex.ANNOTATION + ")*[\\s]*" + JavaDocRegex.METHOD;
+        String sectionRegex = JavaDocRegex.JAVA_METHOD_DOC + "([\\s]*" + JavaDocRegex.ANNOTATION + ")*[\\s]*" + JavaDocRegex.METHOD;
         Pattern pattern = Pattern.compile(sectionRegex, Pattern.DOTALL);
         Matcher matcher = pattern.matcher(fileString);
         while (matcher.find()) {
             String section = fileString.substring(matcher.start(), matcher.end());
-            String javadocSection = findJavadocSectionByRegexInSection(section, JavaDocRegex.JAVADOC);
+            String javadocSection = findJavadocSectionByRegexInSection(section, JavaDocRegex.JAVA_METHOD_DOC);
             methodMap.put(removeJavadocCharactersFromString(section), javadocSection);
+            fieldMap.put(matcher.group(3), matcher.group(1));
         }
     }
 
@@ -98,13 +99,11 @@ public class JavaFile {
      */
     public void getFieldsFromJavaField() {
         String fileString = getFileString();
-        String sectionRegex = JavaDocRegex.JAVADOC + JavaDocRegex.FIELD;
-        Pattern pattern = Pattern.compile(sectionRegex, Pattern.DOTALL);
+        String sectionRegex = JavaDocRegex.JAVA_FIELD_DOC + JavaDocRegex.FIELD;
+        Pattern pattern = Pattern.compile(sectionRegex, Pattern.CASE_INSENSITIVE | Pattern.MULTILINE);
         Matcher matcher = pattern.matcher(fileString);
         while (matcher.find()) {
-            String section = fileString.substring(matcher.start(), matcher.end());
-            String javadocSection = findJavadocSectionByRegexInSection(section, JavaDocRegex.JAVADOC);
-            fieldMap.put(removeJavadocCharactersFromString(section), javadocSection);
+            fieldMap.put(matcher.group(3), matcher.group(1));
         }
     }
 
@@ -127,7 +126,7 @@ public class JavaFile {
     }
 
     public static void main(String[] args) {
-        JavaFile javaFile = new JavaFile(Paths.get("/Users/Mac/Desktop/git-work/card-bff/card-bff-app/src/main/java/com/qianmi/card/controller/ArchiveController.java"));
+        JavaFile javaFile = new JavaFile(Paths.get("/Users/Mac/Desktop/git-work/cloudshop-api/src/main/java/com/qianmi/cloudshop/api/controller/xsite/Goods4XsiteController.java"));
         System.out.println(javaFile);
     }
 }
