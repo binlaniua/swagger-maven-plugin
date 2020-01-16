@@ -12,6 +12,7 @@ https://github.com/kongchen/swagger-maven-plugin
 * 5. 构建完成后会把swagger.json上传到指定接口(post + json)
 * 6. 修复ApiImplicitParam的dataType找不到的话, 不使用controller
 * 7. 支持javax 和 hibernate 的验证抽取, 会在Defined里面加个x-rules, 规则是form-validator
+* 8. 支持使用javadoc来用于注释(正则抽取, 需要比较规范的注释)
 
 ## 验证规则抽取
 
@@ -24,6 +25,20 @@ https://github.com/kongchen/swagger-maven-plugin
         验证规则
     ]
 }
+```
+
+## 注释规则抽取
+
+```java
+/**
+ * 字段注释
+ */
+
+/**
+ * 方法注释
+ * @param
+ * @result
+ */
 ```
 
 
