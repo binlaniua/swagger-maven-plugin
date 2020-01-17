@@ -84,6 +84,9 @@ public class SpringMvcApiReader extends AbstractReader implements ClassSwaggerRe
         // Add the description from the controller api
         final Class<?> controller = resource.getControllerClass();
         final RequestMapping controllerRM = findMergedAnnotation(controller, RequestMapping.class);
+        if (!this.isValidRequestMapping(controllerRM)) {
+            return this.swagger;
+        }
 
         String[] controllerProduces = new String[0];
         String[] controllerConsumes = new String[0];
@@ -113,6 +116,9 @@ public class SpringMvcApiReader extends AbstractReader implements ClassSwaggerRe
                 if (requestMapping == null) {
                     continue;
                 }
+                if (!this.isValidRequestMapping(requestMapping)) {
+                    continue;
+                }
                 final ApiOperation apiOperation = findMergedAnnotation(method, ApiOperation.class);
                 if (apiOperation != null && apiOperation.hidden()) {
                     continue;
@@ -127,10 +133,6 @@ public class SpringMvcApiReader extends AbstractReader implements ClassSwaggerRe
                     final String httpMethod = requestMethod.toString()
                                                            .toLowerCase();
                     final Operation operation = this.parseMethod(method, requestMethod);
-                    if (api != null) {
-                        operation.setSummary(api.description() + "-" + operation.getSummary());
-                    }
-
 
                     this.updateOperationParameters(new ArrayList<Parameter>(), regexMap, operation);
 
@@ -152,6 +154,13 @@ public class SpringMvcApiReader extends AbstractReader implements ClassSwaggerRe
             }
         }
         return this.swagger;
+    }
+
+    private boolean isValidRequestMapping(final RequestMapping requestMapping) {
+        if (requestMapping != null && requestMapping.value() != null && requestMapping.value().length > 0) {
+            return !requestMapping.value()[0].startsWith("$");
+        }
+        return true;
     }
 
     private RequestMethod[] getRequestMethod(RequestMethod[] origin, final Method method, final boolean buildPharse) {

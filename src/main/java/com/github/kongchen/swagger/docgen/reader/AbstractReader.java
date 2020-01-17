@@ -26,6 +26,7 @@ import org.apache.commons.lang3.text.StrBuilder;
 import org.apache.maven.plugin.logging.Log;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.web.bind.annotation.*;
+import sun.reflect.generics.reflectiveObjects.ParameterizedTypeImpl;
 
 import javax.ws.rs.*;
 import java.lang.annotation.Annotation;
@@ -393,7 +394,12 @@ public abstract class AbstractReader {
                 }
                 // 如果param是body, 那么扩展验证规则进入
                 if (param != null && param instanceof BodyParameter) {
-                    validationExtractor.extract(this.swagger, (Class) type, (BodyParameter) param);
+                    if (type instanceof ParameterizedTypeImpl) {
+                        validationExtractor.extract(this.swagger, ((ParameterizedTypeImpl) type).getClass(), (BodyParameter) param);
+                    } else {
+                        validationExtractor.extract(this.swagger, (Class) type, (BodyParameter) param);
+                    }
+
                 }
             }
         }

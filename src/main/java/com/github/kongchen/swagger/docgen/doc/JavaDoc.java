@@ -24,15 +24,25 @@ public final class JavaDoc {
     private Map<String, JavaFile> javaFileHashMap = new HashMap<>();
 
     public String getMethodName(Method method) {
-        return javaFileHashMap.get(method.getDeclaringClass()
-                                         .getName())
-                              .getMethod(method);
+        JavaFile javaFile = getJavaFile(method.getDeclaringClass()
+                                              .getName());
+        if (javaFile != null) {
+            return javaFile.getMethod(method);
+        }
+        return "";
     }
 
     public String getFieldName(Field field) {
-        return javaFileHashMap.get(field.getDeclaringClass()
-                                        .getName())
-                              .getField(field);
+        JavaFile javaFile = getJavaFile(field.getDeclaringClass()
+                                             .getName());
+        if (javaFile != null) {
+            return javaFile.getField(field);
+        }
+        return "";
+    }
+
+    private JavaFile getJavaFile(String name) {
+        return javaFileHashMap.get(name);
     }
 
     public void init(MavenProject project) {

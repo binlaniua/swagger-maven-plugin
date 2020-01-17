@@ -5,17 +5,12 @@ import com.github.kongchen.swagger.docgen.GenerateException;
 import com.github.kongchen.swagger.docgen.doc.JavaDoc;
 import io.swagger.models.Info;
 import io.swagger.util.Json;
-
 import org.apache.commons.io.FileUtils;
 import org.apache.maven.model.Model;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
-import org.apache.maven.plugins.annotations.Component;
-import org.apache.maven.plugins.annotations.LifecyclePhase;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
-import org.apache.maven.plugins.annotations.ResolutionScope;
+import org.apache.maven.plugins.annotations.*;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.project.MavenProjectHelper;
 
@@ -77,121 +72,126 @@ public class ApiDocumentMojo extends AbstractMojo {
     private String encoding;
 
     public List<ApiSource> getApiSources() {
-        return apiSources;
+        return this.apiSources;
     }
 
-    public void setApiSources(List<ApiSource> apiSources) {
+    public void setApiSources(final List<ApiSource> apiSources) {
         this.apiSources = apiSources;
     }
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
-        if (project != null) {
-            projectEncoding = project.getProperties()
-                                     .getProperty("project.build.sourceEncoding");
+        if (this.project != null) {
+            this.projectEncoding = this.project.getProperties()
+                                               .getProperty("project.build.sourceEncoding");
         }
 
-        if (skipSwaggerGeneration) {
-            getLog().info("Swagger generation is skipped.");
+        if (this.skipSwaggerGeneration) {
+            this.getLog()
+                .info("Swagger generation is skipped.");
             return;
         }
 
-        if (apiSources == null) {
+        if (this.apiSources == null) {
             throw new MojoFailureException("You must configure at least one apiSources element");
         }
 
         // 自动设置info进apiSource
-        Model model = project.getParent()
-                             .getModel();
-        Info info = new Info();
-        info.setTitle(project.getArtifactId());
+        final Model model = this.project.getParent()
+                                        .getModel();
+        final Info info = new Info();
+        info.setTitle(this.project.getArtifactId());
         info.setVersion(model.getVersion());
-        ApiSource source = apiSources.get(0);
+        info.setDescription(this.project.getGroupId() + "|" + this.project.getArtifactId());
+        final ApiSource source = this.apiSources.get(0);
         source.setSpringmvc(true); //肯定是mvc
         source.setInfo(info);
         source.setOutputFormats("json");
-        source.setSwaggerDirectory("../swagger");
+        source.setSwaggerDirectory("./swagger");
 
         // 增加java doc
         JavaDoc.getInstance()
-               .init(project);
+               .init(this.project);
 
 
-        if (useSwaggerSpec11()) {
+        if (this.useSwaggerSpec11()) {
             throw new MojoExecutionException("You may use an old version of swagger which is not supported by swagger-maven-plugin 2.0+\n" +
                     "swagger-maven-plugin 2.0+ only supports swagger-core 1.3.x");
         }
 
-        if (useSwaggerSpec13()) {
+        if (this.useSwaggerSpec13()) {
             throw new MojoExecutionException("You may use an old version of swagger which is not supported by swagger-maven-plugin 3.0+\n" +
                     "swagger-maven-plugin 3.0+ only supports swagger spec 2.0");
         }
 
         try {
-            getLog().debug(apiSources.toString());
+            this.getLog()
+                .debug(this.apiSources.toString());
 
-            if (enabledObjectMapperFeatures != null) {
-                configureObjectMapperFeatures(enabledObjectMapperFeatures, true);
+            if (this.enabledObjectMapperFeatures != null) {
+                this.configureObjectMapperFeatures(this.enabledObjectMapperFeatures, true);
 
             }
 
-            if (disabledObjectMapperFeatures != null) {
-                configureObjectMapperFeatures(disabledObjectMapperFeatures, false);
+            if (this.disabledObjectMapperFeatures != null) {
+                this.configureObjectMapperFeatures(this.disabledObjectMapperFeatures, false);
             }
 
-            for (ApiSource apiSource : apiSources) {
-                validateConfiguration(apiSource);
-                AbstractDocumentSource documentSource = apiSource.isSpringmvc()
-                        ? new SpringMavenDocumentSource(apiSource, getLog(), projectEncoding)
-                        : new MavenDocumentSource(apiSource, getLog(), projectEncoding);
+            for (final ApiSource apiSource : this.apiSources) {
+                this.validateConfiguration(apiSource);
+                final AbstractDocumentSource documentSource = apiSource.isSpringmvc()
+                        ? new SpringMavenDocumentSource(apiSource, this.getLog(), this.projectEncoding)
+                        : new MavenDocumentSource(apiSource, this.getLog(), this.projectEncoding);
 
                 documentSource.loadTypesToSkip();
                 documentSource.loadModelModifier();
                 documentSource.loadModelConverters();
                 documentSource.loadDocuments();
 
-                createOutputDirs(apiSource.getOutputPath());
+                this.createOutputDirs(apiSource.getOutputPath());
 
                 if (apiSource.getTemplatePath() != null) {
                     documentSource.toDocuments();
                 }
-                String swaggerFileName = getSwaggerFileName(apiSource.getSwaggerFileName());
+                final String swaggerFileName = this.getSwaggerFileName(apiSource.getSwaggerFileName());
                 documentSource.toSwaggerDocuments(
                         apiSource.getSwaggerUIDocBasePath() == null
                                 ? apiSource.getBasePath()
                                 : apiSource.getSwaggerUIDocBasePath(),
-                        apiSource.getOutputFormats(), swaggerFileName, projectEncoding);
+                        apiSource.getOutputFormats(), swaggerFileName, this.projectEncoding);
 
-                if (apiSource.isAttachSwaggerArtifact() && apiSource.getSwaggerDirectory() != null && project != null) {
-                    String outputFormats = apiSource.getOutputFormats();
+                if (apiSource.isAttachSwaggerArtifact() && apiSource.getSwaggerDirectory() != null && this.project != null) {
+                    final String outputFormats = apiSource.getOutputFormats();
                     if (outputFormats != null) {
-                        for (String format : outputFormats.split(",")) {
-                            String classifier = swaggerFileName.equals("swagger")
-                                    ? getSwaggerDirectoryName(apiSource.getSwaggerDirectory())
+                        for (final String format : outputFormats.split(",")) {
+                            final File swaggerFile = new File(apiSource.getSwaggerDirectory(), swaggerFileName + "." + format.toLowerCase());
+                            final String classifier = swaggerFileName.equals("swagger")
+                                    ? this.getSwaggerDirectoryName(apiSource.getSwaggerDirectory())
                                     : swaggerFileName;
-                            File swaggerFile = new File(apiSource.getSwaggerDirectory(), swaggerFileName + "." + format.toLowerCase());
-                            projectHelper.attachArtifact(project, format.toLowerCase(), classifier, swaggerFile);
-                            notifyCallback(swaggerFile);
+                            this.projectHelper.attachArtifact(this.project, format.toLowerCase(), classifier, swaggerFile);
+
                         }
                     }
                 }
+                final File swaggerFile = new File(apiSource.getSwaggerDirectory(), swaggerFileName + ".json");
+                this.notifyCallback(swaggerFile);
             }
-        } catch (GenerateException e) {
+        } catch (final GenerateException e) {
             throw new MojoFailureException(e.getMessage(), e);
-        } catch (Exception e) {
+        } catch (final Exception e) {
             throw new MojoExecutionException(e.getMessage(), e);
         }
     }
 
-    private void notifyCallback(File swaggerFile) {
-        if (callbacks == null || callbacks.isEmpty()) {
+    private void notifyCallback(final File swaggerFile) {
+        if (this.callbacks == null || this.callbacks.isEmpty()) {
             return;
         }
         try {
-            String fileBody = FileUtils.readFileToString(swaggerFile, "UTF-8");
-            for (String callback : callbacks) {
-                URL httpUrl = new URL(callback);
-                HttpURLConnection conn = (HttpURLConnection) httpUrl.openConnection();
+            final String fileBody = FileUtils.readFileToString(swaggerFile, "UTF-8");
+            for (final String callback : this.callbacks) {
+                final URL httpUrl = new URL(callback);
+                final HttpURLConnection conn = (HttpURLConnection) httpUrl.openConnection();
                 conn.setRequestMethod("POST");
                 conn.setRequestProperty("Content-Type", "application/json");
                 conn.setRequestProperty("connection", "close");
@@ -199,25 +199,28 @@ public class ApiDocumentMojo extends AbstractMojo {
                 conn.setInstanceFollowRedirects(true);
                 conn.setDoOutput(true);
                 conn.setDoInput(true);
-                conn.connect();
                 try (
                         OutputStreamWriter out = new OutputStreamWriter(conn.getOutputStream());
-                        BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()))
                 ) {
                     out.write(fileBody);
                     out.flush();
-                    while ((reader.readLine()) != null) {
+                    out.close();
+                    conn.connect();
+                    try (BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()))) {
+                        while ((reader.readLine()) != null) {
+                        }
                     }
                 }
                 conn.disconnect();
             }
-        } catch (IOException e) {
+        } catch (final IOException e) {
+            e.printStackTrace();
         }
     }
 
-    private void createOutputDirs(String outputPath) throws MojoExecutionException {
+    private void createOutputDirs(final String outputPath) throws MojoExecutionException {
         if (outputPath != null) {
-            File outputDirectory = new File(outputPath).getParentFile();
+            final File outputDirectory = new File(outputPath).getParentFile();
             if (outputDirectory != null && !outputDirectory.exists()) {
                 if (!outputDirectory.mkdirs()) {
                     throw new MojoExecutionException(
@@ -233,7 +236,7 @@ public class ApiDocumentMojo extends AbstractMojo {
      * @param apiSource
      * @throws GenerateException
      */
-    private void validateConfiguration(ApiSource apiSource) throws GenerateException {
+    private void validateConfiguration(final ApiSource apiSource) throws GenerateException {
         if (apiSource == null) {
             throw new GenerateException("You do not configure any apiSource!");
         } else if (apiSource.getInfo() == null) {
@@ -264,40 +267,41 @@ public class ApiDocumentMojo extends AbstractMojo {
 
     private boolean useSwaggerSpec11() {
         try {
-            Class<?> tryClass = Class.forName("com.wordnik.swagger.annotations.ApiErrors");
+            final Class<?> tryClass = Class.forName("com.wordnik.swagger.annotations.ApiErrors");
             return true;
-        } catch (ClassNotFoundException e) {
+        } catch (final ClassNotFoundException e) {
             return false;
         }
     }
 
     private boolean useSwaggerSpec13() {
         try {
-            Class<?> tryClass = Class.forName("com.wordnik.swagger.model.ApiListing");
+            final Class<?> tryClass = Class.forName("com.wordnik.swagger.model.ApiListing");
             return true;
-        } catch (ClassNotFoundException e) {
+        } catch (final ClassNotFoundException e) {
             return false;
         }
     }
 
-    private String getSwaggerFileName(String swaggerFileName) {
+    private String getSwaggerFileName(final String swaggerFileName) {
         return swaggerFileName == null || "".equals(swaggerFileName.trim()) ? "swagger" : swaggerFileName;
     }
 
-    private String getSwaggerDirectoryName(String swaggerDirectory) {
+    private String getSwaggerDirectoryName(final String swaggerDirectory) {
         return new File(swaggerDirectory).getName();
     }
 
-    private void configureObjectMapperFeatures(List<String> features, boolean enabled) throws Exception {
-        for (String feature : features) {
-            int i = feature.lastIndexOf(".");
-            Class clazz = Class.forName(feature.substring(0, i));
-            Enum e = Enum.valueOf(clazz, feature.substring(i + 1));
-            getLog().debug("enabling " + e.getDeclaringClass()
-                                          .toString() + "." + e.name() + "");
-            Method method = Json.mapper()
-                                .getClass()
-                                .getMethod("configure", e.getClass(), boolean.class);
+    private void configureObjectMapperFeatures(final List<String> features, final boolean enabled) throws Exception {
+        for (final String feature : features) {
+            final int i = feature.lastIndexOf(".");
+            final Class clazz = Class.forName(feature.substring(0, i));
+            final Enum e = Enum.valueOf(clazz, feature.substring(i + 1));
+            this.getLog()
+                .debug("enabling " + e.getDeclaringClass()
+                                      .toString() + "." + e.name() + "");
+            final Method method = Json.mapper()
+                                      .getClass()
+                                      .getMethod("configure", e.getClass(), boolean.class);
             method.invoke(Json.mapper(), e, enabled);
         }
     }
