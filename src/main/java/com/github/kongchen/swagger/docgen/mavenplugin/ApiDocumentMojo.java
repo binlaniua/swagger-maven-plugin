@@ -199,6 +199,7 @@ public class ApiDocumentMojo extends AbstractMojo {
                 conn.setInstanceFollowRedirects(true);
                 conn.setDoOutput(true);
                 conn.setDoInput(true);
+                conn.setReadTimeout(2000);
                 try (
                         OutputStreamWriter out = new OutputStreamWriter(conn.getOutputStream());
                 ) {

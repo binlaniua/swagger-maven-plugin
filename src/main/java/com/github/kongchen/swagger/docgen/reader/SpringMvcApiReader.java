@@ -133,6 +133,9 @@ public class SpringMvcApiReader extends AbstractReader implements ClassSwaggerRe
                     final String httpMethod = requestMethod.toString()
                                                            .toLowerCase();
                     final Operation operation = this.parseMethod(method, requestMethod);
+                    if (api != null && StringUtils.isNotBlank(api.description())) {
+                        operation.setSummary(api.description() + " - " + operation.getSummary());
+                    }
 
                     this.updateOperationParameters(new ArrayList<Parameter>(), regexMap, operation);
 
