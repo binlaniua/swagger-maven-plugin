@@ -105,8 +105,7 @@ public class ApiDocumentMojo extends AbstractMojo {
         }
 
         // 自动设置info进apiSource
-        final Model model = this.project.getParent()
-                                        .getModel();
+        final Model model = this.project.getModel();
         String version = null;
         if (StringUtils.isNotBlank(versionEnv)) {
             version = System.getenv(versionEnv);
