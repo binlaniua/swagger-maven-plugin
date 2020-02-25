@@ -14,6 +14,7 @@ import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.*;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.project.MavenProjectHelper;
+import org.springframework.context.annotation.Primary;
 
 import java.io.*;
 import java.lang.reflect.Method;
@@ -36,6 +37,10 @@ public class ApiDocumentMojo extends AbstractMojo {
     @Parameter
     private List<ApiSource> apiSources;
 
+    /**
+     * 版本环境变量
+     */
+    @Parameter
     private String versionEnv;
 
     /**
