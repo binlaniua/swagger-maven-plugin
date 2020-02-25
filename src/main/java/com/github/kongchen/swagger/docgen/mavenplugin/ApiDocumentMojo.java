@@ -107,12 +107,14 @@ public class ApiDocumentMojo extends AbstractMojo {
         // 自动设置info进apiSource
         final Model model = this.project.getParent()
                                         .getModel();
-        String version;
+        String version = null;
         if (StringUtils.isNotBlank(versionEnv)) {
             version = System.getenv(versionEnv);
-        } else {
+        }
+        if (StringUtils.isBlank(version)) {
             version = model.getVersion();
         }
+
         final Info info = new Info();
         info.setTitle(this.project.getArtifactId());
         info.setVersion(version);
@@ -125,20 +127,32 @@ public class ApiDocumentMojo extends AbstractMojo {
 
         // 增加java doc
         JavaDoc.getInstance()
-               .init(this.project);
+               .
+
+                       init(this.project);
 
 
-        if (this.useSwaggerSpec11()) {
+        if (this.
+
+                        useSwaggerSpec11())
+
+        {
             throw new MojoExecutionException("You may use an old version of swagger which is not supported by swagger-maven-plugin 2.0+\n" +
                     "swagger-maven-plugin 2.0+ only supports swagger-core 1.3.x");
         }
 
-        if (this.useSwaggerSpec13()) {
+        if (this.
+
+                        useSwaggerSpec13())
+
+        {
             throw new MojoExecutionException("You may use an old version of swagger which is not supported by swagger-maven-plugin 3.0+\n" +
                     "swagger-maven-plugin 3.0+ only supports swagger spec 2.0");
         }
 
-        try {
+        try
+
+        {
             this.getLog()
                 .debug(this.apiSources.toString());
 
@@ -190,11 +204,18 @@ public class ApiDocumentMojo extends AbstractMojo {
                 final File swaggerFile = new File(apiSource.getSwaggerDirectory(), swaggerFileName + ".json");
                 this.notifyCallback(swaggerFile);
             }
-        } catch (final GenerateException e) {
+        } catch (
+                final GenerateException e)
+
+        {
             throw new MojoFailureException(e.getMessage(), e);
-        } catch (final Exception e) {
+        } catch (
+                final Exception e)
+
+        {
             throw new MojoExecutionException(e.getMessage(), e);
         }
+
     }
 
     private void notifyCallback(final File swaggerFile) {
