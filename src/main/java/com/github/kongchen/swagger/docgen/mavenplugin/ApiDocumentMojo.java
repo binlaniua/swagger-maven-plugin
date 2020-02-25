@@ -6,6 +6,7 @@ import com.github.kongchen.swagger.docgen.doc.JavaDoc;
 import io.swagger.models.Info;
 import io.swagger.util.Json;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.maven.model.Model;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
@@ -34,6 +35,8 @@ public class ApiDocumentMojo extends AbstractMojo {
      */
     @Parameter
     private List<ApiSource> apiSources;
+
+    private String versionEnv;
 
     /**
      * A set of feature enums which should be enabled on the JSON object mapper
@@ -99,9 +102,15 @@ public class ApiDocumentMojo extends AbstractMojo {
         // 自动设置info进apiSource
         final Model model = this.project.getParent()
                                         .getModel();
+        String version;
+        if (StringUtils.isNotBlank(versionEnv)) {
+            version = System.getenv(versionEnv);
+        } else {
+            version = model.getVersion();
+        }
         final Info info = new Info();
         info.setTitle(this.project.getArtifactId());
-        info.setVersion(model.getVersion());
+        info.setVersion(version);
         info.setDescription(this.project.getGroupId() + "|" + this.project.getArtifactId());
         final ApiSource source = this.apiSources.get(0);
         source.setSpringmvc(true); //肯定是mvc
@@ -215,7 +224,7 @@ public class ApiDocumentMojo extends AbstractMojo {
                 conn.disconnect();
             }
         } catch (final IOException e) {
-            e.printStackTrace();
+//            e.printStackTrace();
         }
     }
 

@@ -13,6 +13,7 @@ https://github.com/kongchen/swagger-maven-plugin
 * 6. 修复ApiImplicitParam的dataType找不到的话, 不使用controller
 * 7. 支持javax 和 hibernate 的验证抽取, 会在Defined里面加个x-rules, 规则是form-validator
 * 8. 支持使用javadoc来用于注释(正则抽取, 需要比较规范的注释)
+* 9. 增加versionEnv配置, 用于读取当前构建的版本号
 
 ## 验证规则抽取
 
@@ -50,6 +51,7 @@ https://github.com/kongchen/swagger-maven-plugin
     <artifactId>swagger-maven-plugin</artifactId>
     <version>版本号</version>
     <configuration>
+        <verionEnv>构建环境变量,例如:MVN_RELEASE_VERSION</versionEnv>
         <apiSources>
             <apiSource>
                 <locations>扫描的包名</locations>
