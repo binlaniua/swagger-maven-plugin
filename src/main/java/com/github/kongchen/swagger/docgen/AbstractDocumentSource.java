@@ -295,6 +295,10 @@ public abstract class AbstractDocumentSource<D extends AbstractReader & ClassSwa
         }
     }
 
+    /**
+     * 读取忽略的类型
+     * @throws GenerateException
+     */
     public void loadTypesToSkip() throws GenerateException {
         List<String> typesToSkip = apiSource.getTypesToSkip();
         if (typesToSkip == null) {

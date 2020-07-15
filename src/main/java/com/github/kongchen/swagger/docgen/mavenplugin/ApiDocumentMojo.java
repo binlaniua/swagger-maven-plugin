@@ -3,6 +3,7 @@ package com.github.kongchen.swagger.docgen.mavenplugin;
 import com.github.kongchen.swagger.docgen.AbstractDocumentSource;
 import com.github.kongchen.swagger.docgen.GenerateException;
 import com.github.kongchen.swagger.docgen.doc.JavaDoc;
+import com.github.kongchen.swagger.docgen.dubbo.DubboMavenDocumentSource;
 import io.swagger.models.Info;
 import io.swagger.util.Json;
 import org.apache.commons.io.FileUtils;
@@ -14,7 +15,6 @@ import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.*;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.project.MavenProjectHelper;
-import org.springframework.context.annotation.Primary;
 
 import java.io.*;
 import java.lang.reflect.Method;
@@ -107,8 +107,8 @@ public class ApiDocumentMojo extends AbstractMojo {
         // 自动设置info进apiSource
         final Model model = this.project.getModel();
         String version = null;
-        if (StringUtils.isNotBlank(versionEnv)) {
-            version = System.getenv(versionEnv);
+        if (StringUtils.isNotBlank(this.versionEnv)) {
+            version = System.getenv(this.versionEnv);
         }
         if (StringUtils.isBlank(version)) {
             version = model.getVersion();
@@ -118,40 +118,13 @@ public class ApiDocumentMojo extends AbstractMojo {
         info.setTitle(this.project.getArtifactId());
         info.setVersion(version);
         info.setDescription(this.project.getGroupId() + "|" + this.project.getArtifactId());
-        final ApiSource source = this.apiSources.get(0);
-        source.setSpringmvc(true); //肯定是mvc
-        source.setInfo(info);
-        source.setOutputFormats("json");
-        source.setSwaggerDirectory("./swagger");
+
 
         // 增加java doc
         JavaDoc.getInstance()
-               .
+               .init(this.project);
 
-                       init(this.project);
-
-
-        if (this.
-
-                        useSwaggerSpec11())
-
-        {
-            throw new MojoExecutionException("You may use an old version of swagger which is not supported by swagger-maven-plugin 2.0+\n" +
-                    "swagger-maven-plugin 2.0+ only supports swagger-core 1.3.x");
-        }
-
-        if (this.
-
-                        useSwaggerSpec13())
-
-        {
-            throw new MojoExecutionException("You may use an old version of swagger which is not supported by swagger-maven-plugin 3.0+\n" +
-                    "swagger-maven-plugin 3.0+ only supports swagger spec 2.0");
-        }
-
-        try
-
-        {
+        try {
             this.getLog()
                 .debug(this.apiSources.toString());
 
@@ -165,11 +138,22 @@ public class ApiDocumentMojo extends AbstractMojo {
             }
 
             for (final ApiSource apiSource : this.apiSources) {
-                this.validateConfiguration(apiSource);
-                final AbstractDocumentSource documentSource = apiSource.isSpringmvc()
-                        ? new SpringMavenDocumentSource(apiSource, this.getLog(), this.projectEncoding)
-                        : new MavenDocumentSource(apiSource, this.getLog(), this.projectEncoding);
+                apiSource.setSpringmvc(true); //肯定是mvc
+                apiSource.setInfo(info);
+                apiSource.setOutputFormats("json");
+                apiSource.setSwaggerDirectory("./swagger");
 
+                this.validateConfiguration(apiSource);
+
+                // 使用spring
+//                final AbstractDocumentSource documentSource = apiSource.isSpringmvc()
+//                        ? new SpringMavenDocumentSource(apiSource, this.getLog(), this.projectEncoding)
+//                        : new MavenDocumentSource(apiSource, this.getLog(), this.projectEncoding);
+
+                AbstractDocumentSource documentSource =
+                        apiSource.isDubbo()
+                                ? new DubboMavenDocumentSource(this.getLog(), apiSource, this.projectEncoding)
+                                : new SpringMavenDocumentSource(apiSource, this.getLog(), this.projectEncoding);
                 documentSource.loadTypesToSkip();
                 documentSource.loadModelModifier();
                 documentSource.loadModelConverters();
@@ -233,7 +217,8 @@ public class ApiDocumentMojo extends AbstractMojo {
                 conn.setInstanceFollowRedirects(true);
                 conn.setDoOutput(true);
                 conn.setDoInput(true);
-                conn.setReadTimeout(2000);
+                conn.setConnectTimeout(10000);
+                conn.setReadTimeout(10000);
                 try (
                         OutputStreamWriter out = new OutputStreamWriter(conn.getOutputStream());
                 ) {
@@ -241,15 +226,17 @@ public class ApiDocumentMojo extends AbstractMojo {
                     out.flush();
                     out.close();
                     conn.connect();
+                    String line = "";
                     try (BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()))) {
-                        while ((reader.readLine()) != null) {
+                        while ((line = reader.readLine()) != null) {
+                            System.out.println(line);
                         }
                     }
                 }
                 conn.disconnect();
             }
         } catch (final IOException e) {
-//            e.printStackTrace();
+            e.printStackTrace();
         }
     }
 
@@ -300,23 +287,6 @@ public class ApiDocumentMojo extends AbstractMojo {
 
     }
 
-    private boolean useSwaggerSpec11() {
-        try {
-            final Class<?> tryClass = Class.forName("com.wordnik.swagger.annotations.ApiErrors");
-            return true;
-        } catch (final ClassNotFoundException e) {
-            return false;
-        }
-    }
-
-    private boolean useSwaggerSpec13() {
-        try {
-            final Class<?> tryClass = Class.forName("com.wordnik.swagger.model.ApiListing");
-            return true;
-        } catch (final ClassNotFoundException e) {
-            return false;
-        }
-    }
 
     private String getSwaggerFileName(final String swaggerFileName) {
         return swaggerFileName == null || "".equals(swaggerFileName.trim()) ? "swagger" : swaggerFileName;

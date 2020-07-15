@@ -1,5 +1,12 @@
 package com.github.kongchen.swagger.docgen.doc;
 
+import com.github.javaparser.JavaParser;
+import com.github.javaparser.ParseResult;
+import com.github.javaparser.StaticJavaParser;
+import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.body.FieldDeclaration;
+import com.github.javaparser.ast.body.MethodDeclaration;
+import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 
@@ -16,7 +23,7 @@ import java.util.regex.Pattern;
 /**
  * java原文件路径
  */
-public class JavaFile {
+public class JavaFile extends VoidVisitorAdapter {
 
     private Path path;
 
@@ -36,14 +43,13 @@ public class JavaFile {
         return className;
     }
 
-    public JavaFile(Path path) {
+    public JavaFile(Path path) throws IOException {
         this.path = path;
         this.packageName = getPackageNameFromFile();
         this.className = path.getFileName()
                              .toString()
                              .replace(".java", "");
-        this.getMethodsFromJavaFile();
-        this.getFieldsFromJavaField();
+        this.visit(StaticJavaParser.parse(path), null);
     }
 
     public String getMethod(Method method) {
@@ -65,6 +71,28 @@ public class JavaFile {
         }
     }
 
+    @Override
+    public void visit(MethodDeclaration n, Object arg) {
+        String comment = "";
+        if (n.getJavadoc().isPresent()){
+            comment = n.getJavadoc().get().toText();
+            comment = StringUtils.substringBefore(comment, "@");
+            comment = comment.replaceAll("\n", "");
+        }
+        this.methodMap.put(n.getName().asString(), comment);
+    }
+
+    @Override
+    public void visit(FieldDeclaration n, Object arg) {
+        String comment = "";
+        if (n.getJavadoc().isPresent()){
+            comment = n.getJavadoc().get().toText();
+            comment = StringUtils.substringBefore(comment, "@");
+            comment = comment.replaceAll("\n", "");
+        }
+        this.fieldMap.put(n.getVariable(0).getName().asString(), comment);
+    }
+
     /**
      * @return
      */
@@ -78,55 +106,5 @@ public class JavaFile {
         return null;
     }
 
-    /**
-     *
-     */
-    public void getMethodsFromJavaFile() {
-        String fileString = getFileString();
-        String sectionRegex = JavaDocRegex.JAVA_METHOD_DOC + "([\\s]*" + JavaDocRegex.ANNOTATION + ")*[\\s]*" + JavaDocRegex.METHOD;
-        Pattern pattern = Pattern.compile(sectionRegex, Pattern.DOTALL);
-        Matcher matcher = pattern.matcher(fileString);
-        while (matcher.find()) {
-            String section = fileString.substring(matcher.start(), matcher.end());
-            String javadocSection = findJavadocSectionByRegexInSection(section, JavaDocRegex.JAVA_METHOD_DOC);
-            methodMap.put(removeJavadocCharactersFromString(section), javadocSection);
-            fieldMap.put(matcher.group(3), matcher.group(1));
-        }
-    }
 
-    /**
-     *
-     */
-    public void getFieldsFromJavaField() {
-        String fileString = getFileString();
-        String sectionRegex = JavaDocRegex.JAVA_FIELD_DOC + JavaDocRegex.FIELD;
-        Pattern pattern = Pattern.compile(sectionRegex, Pattern.CASE_INSENSITIVE | Pattern.MULTILINE);
-        Matcher matcher = pattern.matcher(fileString);
-        while (matcher.find()) {
-            fieldMap.put(matcher.group(3), matcher.group(1));
-        }
-    }
-
-    private String findJavadocSectionByRegexInSection(String section, String regex) {
-        Pattern pattern = Pattern.compile(regex);
-        Matcher matcher = pattern.matcher(section);
-        if (matcher.find()) {
-            int javadocEnd = matcher.end();
-            return section.substring(matcher.start(), matcher.end());
-        }
-        return "";
-    }
-
-    private String removeJavadocCharactersFromString(String str) {
-        return str.replace("/**", "")
-                  .replace("*/", "")
-                  .replace("*", "")
-                  .trim()
-                  .replaceAll("[\\s]+", " ");
-    }
-
-    public static void main(String[] args) {
-        JavaFile javaFile = new JavaFile(Paths.get("/Users/Mac/Desktop/git-work/cloudshop-api/src/main/java/com/qianmi/cloudshop/api/controller/xsite/Goods4XsiteController.java"));
-        System.out.println(javaFile);
-    }
 }

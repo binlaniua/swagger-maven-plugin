@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseStatus;
+import springfox.documentation.annotations.ApiIgnore;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
@@ -473,6 +474,15 @@ public class SpringMvcApiReader extends AbstractReader implements ClassSwaggerRe
                     if (method.isSynthetic()) {
                         return;
                     }
+
+                    //
+                    final ApiIgnore apiIgnore = method.getAnnotation(ApiIgnore.class);
+                    if (apiIgnore != null) {
+                        SpringMvcApiReader.this.LOG.info("忽略方法 ==> " + method);
+                        return;
+                    }
+
+                    //
                     final RequestMapping methodRequestMapping = findMergedAnnotation(method, RequestMapping.class);
 
                     // Look for method-level @RequestMapping annotation

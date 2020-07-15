@@ -111,6 +111,9 @@ public class ApiSource {
     private boolean springmvc;
 
     @Parameter
+    private boolean dubbo;
+
+    @Parameter
     private String defaultRequestMethod;
 
     @Parameter
@@ -160,6 +163,12 @@ public class ApiSource {
         this.defaultRequestMethod = defaultRequestMethod.toUpperCase();
     }
 
+    /**
+     * 搜索包含注解的class
+     *
+     * @param clazz
+     * @return
+     */
     public Set<Class<?>> getValidClasses(Class<? extends Annotation> clazz) {
         Set<Class<?>> classes = new LinkedHashSet<Class<?>>();
 
@@ -220,11 +229,11 @@ public class ApiSource {
             io.swagger.annotations.Info infoAnnotation = swaggerDefinition.info();
 
             Info info = new Info().title(infoAnnotation.title())
-                    .description(emptyToNull(infoAnnotation.description()))
-                    .version(infoAnnotation.version())
-                    .termsOfService(emptyToNull(infoAnnotation.termsOfService()))
-                    .license(from(infoAnnotation.license()))
-                    .contact(from(infoAnnotation.contact()));
+                                  .description(emptyToNull(infoAnnotation.description()))
+                                  .version(infoAnnotation.version())
+                                  .termsOfService(emptyToNull(infoAnnotation.termsOfService()))
+                                  .license(from(infoAnnotation.license()))
+                                  .contact(from(infoAnnotation.contact()));
 
             Map<String, Object> customExtensions = BaseReaderUtils.parseExtensions(infoAnnotation.extensions());
             for (Map.Entry<String, Object> extension : customExtensions.entrySet()) {
@@ -405,14 +414,14 @@ public class ApiSource {
     }
 
     public List<String> getSwaggerExtensions() {
-		return swaggerExtensions;
-	}
+        return swaggerExtensions;
+    }
 
-	public void setSwaggerExtensions(List<String> swaggerExtensions) {
-		this.swaggerExtensions = swaggerExtensions;
-	}
+    public void setSwaggerExtensions(List<String> swaggerExtensions) {
+        this.swaggerExtensions = swaggerExtensions;
+    }
 
-	public String getApiSortComparator() {
+    public String getApiSortComparator() {
         return apiSortComparator;
     }
 
@@ -493,14 +502,14 @@ public class ApiSource {
     }
 
     public String getOperationIdFormat() {
-		return operationIdFormat;
-	}
+        return operationIdFormat;
+    }
 
-	public void setOperationIdFormat(String operationIdFormat) {
-		this.operationIdFormat = operationIdFormat;
-	}
+    public void setOperationIdFormat(String operationIdFormat) {
+        this.operationIdFormat = operationIdFormat;
+    }
 
-	private String emptyToNull(String str) {
+    private String emptyToNull(String str) {
         return StringUtils.isEmpty(str) ? null : str;
     }
 
@@ -510,6 +519,14 @@ public class ApiSource {
 
     public void setRemoveBasePathFromEndpoints(Boolean removeBasePathFromEndpoints) {
         this.removeBasePathFromEndpoints = removeBasePathFromEndpoints;
+    }
+
+    public boolean isDubbo() {
+        return dubbo;
+    }
+
+    public void setDubbo(boolean dubbo) {
+        this.dubbo = dubbo;
     }
 }
 
