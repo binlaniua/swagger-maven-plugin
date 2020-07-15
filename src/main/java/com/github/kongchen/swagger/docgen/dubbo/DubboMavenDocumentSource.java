@@ -22,6 +22,7 @@ public class DubboMavenDocumentSource extends AbstractDocumentSource<DubboReader
 
     /**
      * 只抽取接口并且接口名包含 provider的
+     *
      * @return
      */
     @Override
@@ -29,9 +30,12 @@ public class DubboMavenDocumentSource extends AbstractDocumentSource<DubboReader
         Set<Class<?>> result = new HashSet<>();
         for (String location : apiSource.getLocations()) {
             for (String typeName : new Reflections(location, new SubTypesScanner(false)).getAllTypes()) {
-                if (typeName.endsWith("Provider")){
+                if (typeName.endsWith("Provider")) {
                     try {
-                        result.add(Class.forName(typeName));
+                        final Class<?> aClass = Class.forName(typeName);
+                        if (aClass.isInterface()) {
+                            result.add(Class.forName(typeName));
+                        }
                     } catch (ClassNotFoundException e) {
                     }
                 }
